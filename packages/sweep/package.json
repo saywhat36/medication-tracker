@@ -1,0 +1,13 @@
+{
+  "name": "@medication-tracker/sweep",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@medication-tracker/api": "*",
+    "@medication-tracker/core": "*"
+  }
+}
