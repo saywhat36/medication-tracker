@@ -10,7 +10,7 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        project: true,
+        projectService: true,
       },
     },
     plugins: {
