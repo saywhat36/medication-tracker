@@ -24,6 +24,14 @@ export function createServer(
     };
     const med = { id: randomUUID(), ...body };
     repo.addMedication(med);
+    const today = now().slice(0, 10);
+    repo.addDoses(
+      med.schedule.map((time) => ({
+        medicationId: med.id,
+        scheduledFor: `${today}T${time}:00Z`,
+        takenAt: null,
+      }))
+    );
     res.status(201).json(med);
   });
 
