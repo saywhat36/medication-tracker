@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import express from 'express';
 import { isOverdue } from '@medication-tracker/core';
 import type { MedicationRepository } from './repository.js';
@@ -11,6 +12,19 @@ export function createServer(
 
   app.get('/medications', (_req, res) => {
     res.json(repo.listMedications());
+  });
+
+  app.post('/medications', (req, res) => {
+    const body = req.body as {
+      name: string;
+      pillsRemaining: number;
+      dosesPerDay: number;
+      refillLeadTimeDays: number;
+      schedule: string[];
+    };
+    const med = { id: randomUUID(), ...body };
+    repo.addMedication(med);
+    res.status(201).json(med);
   });
 
   app.get('/doses/due', (req, res) => {

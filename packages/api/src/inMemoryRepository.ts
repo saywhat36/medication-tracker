@@ -15,6 +15,10 @@ export class InMemoryMedicationRepository implements MedicationRepository {
     return this.medications.map((m) => ({ ...m }));
   }
 
+  addMedication(med: Medication): void {
+    this.medications.push({ ...med });
+  }
+
   getDueDoses(now: string): Dose[] {
     return dosesDueAt(this.doses, now);
   }

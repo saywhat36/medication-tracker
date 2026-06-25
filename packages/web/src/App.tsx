@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
 import { api } from '@/api';
+import { AddMedicationForm } from '@/components/AddMedicationForm';
 import { DoseList } from '@/components/DoseList';
 import { RefillList } from '@/components/RefillList';
 
@@ -28,6 +29,10 @@ export default function App() {
         d.scheduledFor === scheduledFor ? { ...d, takenAt: new Date().toISOString() } : d
       )
     );
+  }
+
+  function handleMedicationAdded(med: Medication) {
+    setMedications((prev) => [...prev, med]);
   }
 
   if (loading) {
@@ -78,6 +83,13 @@ export default function App() {
           Refill status
         </h2>
         <RefillList statuses={refillStatuses} medications={medications} />
+      </section>
+
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+          Medications
+        </h2>
+        <AddMedicationForm onAdded={handleMedicationAdded} onSubmit={api.addMedication} />
       </section>
     </div>
   );

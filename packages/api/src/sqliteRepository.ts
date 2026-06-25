@@ -47,6 +47,10 @@ export class SqliteMedicationRepository implements MedicationRepository {
       .run(dose.medicationId, dose.scheduledFor, dose.takenAt ?? null);
   }
 
+  addMedication(med: Medication): void {
+    this.insertMedication(med);
+  }
+
   listMedications(): Medication[] {
     const rows = this.db.prepare('SELECT * FROM medications').all() as Record<string, unknown>[];
     return rows.map(toMedication);

@@ -27,6 +27,23 @@ export function runRepositoryTests(makeRepo: () => MedicationRepository) {
     });
   });
 
+  describe('addMedication', () => {
+    it('adds a new medication that appears in listMedications', () => {
+      const repo = makeRepo();
+      repo.addMedication({
+        id: 'med-99',
+        name: 'Aspirin',
+        pillsRemaining: 60,
+        dosesPerDay: 1,
+        refillLeadTimeDays: 5,
+        schedule: ['09:00'],
+      });
+      const meds = repo.listMedications();
+      expect(meds).toHaveLength(2);
+      expect(meds.find((m) => m.id === 'med-99')?.name).toBe('Aspirin');
+    });
+  });
+
   describe('getDueDoses', () => {
     it('returns pending doses at or before now', () => {
       const repo = makeRepo();
