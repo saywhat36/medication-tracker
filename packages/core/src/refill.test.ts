@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { daysUntilRefill } from './refill.js';
+import { daysUntilRefill, refillDate, getRefillStatus } from './refill.js';
 import type { Medication } from './types.js';
 
 const base: Medication = {
@@ -36,5 +36,28 @@ describe('daysUntilRefill', () => {
     expect(() => daysUntilRefill({ ...base, dosesPerDay: -1 })).toThrow(
       'dosesPerDay must be greater than 0'
     );
+  });
+});
+
+describe('refillDate', () => {
+  it('returns an ISO date string offset by daysUntilRefill', () => {
+    // base: 30 pills, 1/day, lead 7 → daysUntilRefill = 23
+    expect(refillDate(base, '2026-06-25')).toBe('2026-07-18');
+  });
+
+  it('returns a past date when already overdue', () => {
+    // 3 pills, 1/day, lead 7 → daysUntilRefill = -4
+    expect(refillDate({ ...base, pillsRemaining: 3 }, '2026-06-25')).toBe('2026-06-21');
+  });
+});
+
+describe('getRefillStatus', () => {
+  it('returns a complete RefillStatus for a medication', () => {
+    const status = getRefillStatus(base, '2026-06-25');
+    expect(status).toEqual({
+      medicationId: 'med-1',
+      daysUntilRefill: 23,
+      refillDate: '2026-07-18',
+    });
   });
 });
