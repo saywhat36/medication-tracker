@@ -33,6 +33,11 @@ export default function App() {
 
   function handleMedicationAdded(med: Medication) {
     setMedications((prev) => [...prev, med]);
+    // Fetch doses and refill status so the new medication's schedule appears immediately.
+    void Promise.all([api.getDueDoses(), api.getRefillStatuses()]).then(([doses, statuses]) => {
+      setDueDoses(doses);
+      setRefillStatuses(statuses);
+    });
   }
 
   if (loading) {
