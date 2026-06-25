@@ -40,5 +40,10 @@ export const mockClient = {
     if (dose) dose.takenAt = new Date().toISOString();
     return Promise.resolve();
   },
+  addMedication: (data: Omit<Medication, 'id'>) => {
+    const med: Medication = { id: `med-mock-${Date.now()}`, ...data };
+    mockMedications.push(med);
+    return Promise.resolve(med);
+  },
   getRefillStatuses: () => Promise.resolve(mockRefillStatuses),
 };

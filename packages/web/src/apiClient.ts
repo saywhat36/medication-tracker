@@ -21,6 +21,13 @@ export const apiClient = {
       body: JSON.stringify({ medicationId, scheduledFor }),
     }).then((r) => json<void>(r)),
 
+  addMedication: (data: Omit<Medication, 'id'>) =>
+    fetch(`${BASE}/medications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then((r) => json<Medication>(r)),
+
   getRefillStatuses: () =>
     fetch(`${BASE}/refill-status`).then((r) => json<RefillStatus[]>(r)),
 };
