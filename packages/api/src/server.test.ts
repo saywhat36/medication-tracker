@@ -33,6 +33,38 @@ describe('GET /medications', () => {
   });
 });
 
+describe('POST /medications', () => {
+  it('creates a medication and returns 201 with an id', async () => {
+    const repo = new InMemoryMedicationRepository([], []);
+    const app = createServer(repo, () => FIXED_NOW);
+    const res = await request(app).post('/medications').send({
+      name: 'Aspirin',
+      pillsRemaining: 60,
+      dosesPerDay: 1,
+      refillLeadTimeDays: 5,
+      schedule: ['09:00'],
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.name).toBe('Aspirin');
+    expect(typeof res.body.id).toBe('string');
+  });
+
+  it('creates doses for today based on the schedule', async () => {
+    const repo = new InMemoryMedicationRepository([], []);
+    const app = createServer(repo, () => FIXED_NOW);
+    await request(app).post('/medications').send({
+      name: 'Aspirin',
+      pillsRemaining: 60,
+      dosesPerDay: 1,
+      refillLeadTimeDays: 5,
+      schedule: ['09:00'],
+    });
+    const due = await request(app).get('/doses/due');
+    expect(due.body).toHaveLength(1);
+    expect(due.body[0].scheduledFor).toBe('2026-06-25T09:00:00Z');
+  });
+});
+
 describe('GET /doses/due', () => {
   it('returns doses due at the injected now by default', async () => {
     const res = await request(makeApp()).get('/doses/due');

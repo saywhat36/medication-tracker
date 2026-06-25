@@ -44,6 +44,22 @@ export function runRepositoryTests(makeRepo: () => MedicationRepository) {
     });
   });
 
+  describe('addDoses', () => {
+    it('makes doses visible via getDueDoses', () => {
+      const repo = makeRepo();
+      repo.addDoses([{ medicationId: 'med-1', scheduledFor: '2026-06-25T10:00:00Z', takenAt: null }]);
+      const due = repo.getDueDoses('2026-06-25T12:00:00Z');
+      expect(due.some((d) => d.scheduledFor === '2026-06-25T10:00:00Z')).toBe(true);
+    });
+
+    it('is idempotent — inserting a duplicate dose is a no-op', () => {
+      const repo = makeRepo();
+      repo.addDoses([{ medicationId: 'med-1', scheduledFor: '2026-06-25T08:00:00Z', takenAt: null }]);
+      const due = repo.getDueDoses('2026-06-25T12:00:00Z');
+      expect(due.filter((d) => d.scheduledFor === '2026-06-25T08:00:00Z')).toHaveLength(1);
+    });
+  });
+
   describe('getDueDoses', () => {
     it('returns pending doses at or before now', () => {
       const repo = makeRepo();
