@@ -19,6 +19,15 @@ export class InMemoryMedicationRepository implements MedicationRepository {
     this.medications.push({ ...med });
   }
 
+  addDoses(doses: Dose[]): void {
+    for (const dose of doses) {
+      const exists = this.doses.some(
+        (d) => d.medicationId === dose.medicationId && d.scheduledFor === dose.scheduledFor
+      );
+      if (!exists) this.doses.push({ ...dose });
+    }
+  }
+
   getDueDoses(now: string): Dose[] {
     return dosesDueAt(this.doses, now);
   }

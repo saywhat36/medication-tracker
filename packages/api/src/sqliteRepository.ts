@@ -51,6 +51,15 @@ export class SqliteMedicationRepository implements MedicationRepository {
     this.insertMedication(med);
   }
 
+  addDoses(doses: Dose[]): void {
+    const stmt = this.db.prepare(
+      `INSERT OR IGNORE INTO doses (medication_id, scheduled_for, taken_at) VALUES (?, ?, ?)`
+    );
+    for (const dose of doses) {
+      stmt.run(dose.medicationId, dose.scheduledFor, dose.takenAt ?? null);
+    }
+  }
+
   listMedications(): Medication[] {
     const rows = this.db.prepare('SELECT * FROM medications').all() as Record<string, unknown>[];
     return rows.map(toMedication);

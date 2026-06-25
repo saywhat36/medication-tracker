@@ -33,6 +33,10 @@ export default function App() {
 
   function handleMedicationAdded(med: Medication) {
     setMedications((prev) => [...prev, med]);
+    void Promise.all([api.getDueDoses(), api.getRefillStatuses()]).then(([doses, statuses]) => {
+      setDueDoses(doses);
+      setRefillStatuses(statuses);
+    });
   }
 
   if (loading) {
