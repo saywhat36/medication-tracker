@@ -1,0 +1,72 @@
+import { describe, it, expect } from 'vitest';
+import { dosesDueAt, isOverdue } from './doses.js';
+import type { Dose } from './types.js';
+
+const taken: Dose = {
+  medicationId: 'med-1',
+  scheduledFor: '2026-06-25T08:00:00Z',
+  takenAt: '2026-06-25T08:05:00Z',
+};
+
+const pending: Dose = {
+  medicationId: 'med-1',
+  scheduledFor: '2026-06-25T08:00:00Z',
+  takenAt: null,
+};
+
+const future: Dose = {
+  medicationId: 'med-1',
+  scheduledFor: '2026-06-25T21:00:00Z',
+  takenAt: null,
+};
+
+describe('dosesDueAt', () => {
+  const now = '2026-06-25T12:00:00Z';
+
+  it('returns pending doses whose scheduledFor is at or before now', () => {
+    expect(dosesDueAt([pending], now)).toEqual([pending]);
+  });
+
+  it('excludes doses scheduled in the future', () => {
+    expect(dosesDueAt([future], now)).toEqual([]);
+  });
+
+  it('excludes doses that have already been taken', () => {
+    expect(dosesDueAt([taken], now)).toEqual([]);
+  });
+
+  it('includes a dose scheduled exactly at now', () => {
+    const atNow: Dose = { ...pending, scheduledFor: now };
+    expect(dosesDueAt([atNow], now)).toEqual([atNow]);
+  });
+
+  it('handles a mixed list correctly', () => {
+    expect(dosesDueAt([pending, taken, future], now)).toEqual([pending]);
+  });
+});
+
+describe('isOverdue', () => {
+  it('returns false for a taken dose regardless of time', () => {
+    expect(isOverdue(taken, '2026-06-25T20:00:00Z')).toBe(false);
+  });
+
+  it('returns false when now is before the threshold', () => {
+    // scheduled 08:00, threshold 3h → overdue after 11:00; now is 10:59
+    expect(isOverdue(pending, '2026-06-25T10:59:00Z')).toBe(false);
+  });
+
+  it('returns false when now is exactly at the threshold boundary', () => {
+    // scheduled 08:00 + 3h = 11:00; boundary is not yet overdue
+    expect(isOverdue(pending, '2026-06-25T11:00:00Z')).toBe(false);
+  });
+
+  it('returns true when now is past the threshold', () => {
+    expect(isOverdue(pending, '2026-06-25T11:01:00Z')).toBe(true);
+  });
+
+  it('respects a custom threshold', () => {
+    // scheduled 08:00, threshold 1h → overdue after 09:00
+    expect(isOverdue(pending, '2026-06-25T09:01:00Z', 1)).toBe(true);
+    expect(isOverdue(pending, '2026-06-25T08:59:00Z', 1)).toBe(false);
+  });
+});
