@@ -1,0 +1,45 @@
+services:
+  api:
+    build: .
+    command: npx tsx packages/api/src/main.ts
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      DATA_DIR: /app/data
+      PORT: 3000
+    env_file:
+      - path: .env.local
+        required: false
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/medications"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  sweep:
+    build: .
+    command: npx tsx packages/sweep/src/scheduler.ts
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      DATA_DIR: /app/data
+    env_file:
+      - path: .env.local
+        required: false
+
+  web:
+    build: .
+    command: sh -c "cd packages/web && npx vite --host"
+    ports:
+      - "5173:5173"
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      VITE_MOCK: "false"
+      VITE_API_PROXY_TARGET: http://api:3000

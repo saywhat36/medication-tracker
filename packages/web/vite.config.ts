@@ -2,6 +2,8 @@ import path from 'path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+const apiTarget = process.env['VITE_API_PROXY_TARGET'] ?? 'http://localhost:3000';
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -10,11 +12,12 @@ export default defineConfig({
     },
   },
   server: {
+    host: true, // bind to 0.0.0.0 so it's reachable inside Docker
     proxy: {
-      '/medications': 'http://localhost:3000',
-      '/doses': 'http://localhost:3000',
-      '/refill-status': 'http://localhost:3000',
-      '/sweep': 'http://localhost:3000',
+      '/medications': apiTarget,
+      '/doses': apiTarget,
+      '/refill-status': apiTarget,
+      '/sweep': apiTarget,
     },
   },
 });
