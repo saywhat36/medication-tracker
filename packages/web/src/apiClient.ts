@@ -11,8 +11,12 @@ export const apiClient = {
   getMedications: () =>
     fetch(`${BASE}/medications`).then((r) => json<Medication[]>(r)),
 
-  getDueDoses: () =>
-    fetch(`${BASE}/doses/due`).then((r) => json<Dose[]>(r)),
+  getDueDoses: () => {
+    // Pass end-of-today so all of today's doses are returned, not just past ones.
+    const endOfToday = new Date();
+    endOfToday.setUTCHours(23, 59, 59, 999);
+    return fetch(`${BASE}/doses/due?now=${endOfToday.toISOString()}`).then((r) => json<Dose[]>(r));
+  },
 
   markTaken: (medicationId: string, scheduledFor: string) =>
     fetch(`${BASE}/doses/taken`, {
