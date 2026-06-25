@@ -4,10 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "start": "tsx src/scheduler.ts"
   },
   "dependencies": {
     "@medication-tracker/api": "*",
-    "@medication-tracker/core": "*"
+    "@medication-tracker/core": "*",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/node-cron": "^3.0.11"
   }
 }
