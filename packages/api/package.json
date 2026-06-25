@@ -8,5 +8,8 @@
   },
   "dependencies": {
     "@medication-tracker/core": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.29"
   }
 }
