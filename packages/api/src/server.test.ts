@@ -68,6 +68,25 @@ describe('POST /medications', () => {
   });
 });
 
+describe('DELETE /medications/:id', () => {
+  it('deletes the medication and its doses', async () => {
+    const app = makeApp();
+    const res = await request(app).delete('/medications/med-1');
+    expect(res.status).toBe(200);
+    expect(res.body.id).toBe('med-1');
+
+    const meds = await request(app).get('/medications');
+    expect(meds.body).toHaveLength(0);
+    const today = await request(app).get('/doses/today?date=2026-06-25');
+    expect(today.body).toHaveLength(0);
+  });
+
+  it('returns 404 when the medication does not exist', async () => {
+    const res = await request(makeApp()).delete('/medications/nope');
+    expect(res.status).toBe(404);
+  });
+});
+
 describe('GET /doses/due', () => {
   it('returns doses due at the injected now by default', async () => {
     const res = await request(makeApp()).get('/doses/due');

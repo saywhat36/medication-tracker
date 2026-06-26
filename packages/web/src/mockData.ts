@@ -56,5 +56,10 @@ export const mockClient = {
     mockMedications.push(med);
     return Promise.resolve(med);
   },
+  deleteMedication: (id: string) => {
+    const index = mockMedications.findIndex((m) => m.id === id);
+    if (index !== -1) mockMedications.splice(index, 1);
+    return Promise.resolve();
+  },
   getRefillStatuses: () => Promise.resolve(mockRefillStatuses),
 };

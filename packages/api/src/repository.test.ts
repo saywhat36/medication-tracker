@@ -46,6 +46,25 @@ export function runRepositoryTests(makeRepo: () => MedicationRepository) {
     });
   });
 
+  describe('deleteMedication', () => {
+    it('removes the medication from listMedications', () => {
+      const repo = makeRepo();
+      repo.deleteMedication('med-1');
+      expect(repo.listMedications()).toHaveLength(0);
+    });
+
+    it('removes all of the medication\'s doses', () => {
+      const repo = makeRepo();
+      repo.deleteMedication('med-1');
+      expect(repo.getDosesForDay('2026-06-25')).toHaveLength(0);
+    });
+
+    it('throws when the medication does not exist', () => {
+      const repo = makeRepo();
+      expect(() => repo.deleteMedication('med-does-not-exist')).toThrow();
+    });
+  });
+
   describe('addDoses', () => {
     it('makes doses visible via getDueDoses', () => {
       const repo = makeRepo();
