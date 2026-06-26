@@ -3,6 +3,7 @@ import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
 import { api } from '@/api';
 import { AddMedicationForm } from '@/components/AddMedicationForm';
 import { DoseList } from '@/components/DoseList';
+import { MedicationList } from '@/components/MedicationList';
 import { RefillList } from '@/components/RefillList';
 
 export default function App() {
@@ -39,6 +40,14 @@ export default function App() {
 
   function handleMedicationAdded(med: Medication) {
     setMedications((prev) => [...prev, med]);
+    void Promise.all([api.getTodaysDoses(), api.getRefillStatuses()]).then(([doses, statuses]) => {
+      setDueDoses(doses);
+      setRefillStatuses(statuses);
+    });
+  }
+
+  function handleMedicationDeleted(id: string) {
+    setMedications((prev) => prev.filter((m) => m.id !== id));
     void Promise.all([api.getTodaysDoses(), api.getRefillStatuses()]).then(([doses, statuses]) => {
       setDueDoses(doses);
       setRefillStatuses(statuses);
@@ -100,6 +109,7 @@ export default function App() {
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
           Medications
         </h2>
+        <MedicationList medications={medications} onDeleted={handleMedicationDeleted} />
         <AddMedicationForm onAdded={handleMedicationAdded} onSubmit={api.addMedication} />
       </section>
     </div>

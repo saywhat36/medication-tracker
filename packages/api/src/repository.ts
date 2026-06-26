@@ -3,6 +3,8 @@ import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
 export interface MedicationRepository {
   listMedications(): Medication[];
   addMedication(med: Medication): void;
+  // Remove a medication and all of its dose records. Throws if it doesn't exist.
+  deleteMedication(medicationId: string): void;
   addDoses(doses: Dose[]): void;
   getDueDoses(now: string): Dose[];
   getDosesForDay(date: string): Dose[];

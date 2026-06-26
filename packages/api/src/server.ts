@@ -29,6 +29,16 @@ export function createServer(
     res.status(201).json(med);
   });
 
+  app.delete('/medications/:id', (req, res) => {
+    const { id } = req.params;
+    try {
+      repo.deleteMedication(id);
+      res.json({ id });
+    } catch (err) {
+      res.status(404).json({ error: (err as Error).message });
+    }
+  });
+
   app.get('/doses/due', (req, res) => {
     const at = (req.query['now'] as string | undefined) ?? now();
     res.json(repo.getDueDoses(at));

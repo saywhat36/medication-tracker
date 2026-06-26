@@ -38,6 +38,9 @@ export const apiClient = {
       body: JSON.stringify(data),
     }).then((r) => json<Medication>(r)),
 
+  deleteMedication: (id: string) =>
+    fetch(`${BASE}/medications/${id}`, { method: 'DELETE' }).then((r) => json<void>(r)),
+
   getRefillStatuses: () =>
     fetch(`${BASE}/refill-status`).then((r) => json<RefillStatus[]>(r)),
 };

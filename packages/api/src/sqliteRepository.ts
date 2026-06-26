@@ -52,6 +52,16 @@ export class SqliteMedicationRepository implements MedicationRepository {
     this.insertMedication(med);
   }
 
+  deleteMedication(medicationId: string): void {
+    const result = this.db
+      .prepare('DELETE FROM medications WHERE id = ?')
+      .run(medicationId);
+    if ((result as { changes: number }).changes === 0) {
+      throw new Error(`Medication not found: ${medicationId}`);
+    }
+    this.db.prepare('DELETE FROM doses WHERE medication_id = ?').run(medicationId);
+  }
+
   addDoses(doses: Dose[]): void {
     const stmt = this.db.prepare(
       `INSERT OR IGNORE INTO doses (medication_id, scheduled_for, taken_at) VALUES (?, ?, ?)`

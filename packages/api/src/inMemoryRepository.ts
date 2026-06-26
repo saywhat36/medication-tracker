@@ -19,6 +19,15 @@ export class InMemoryMedicationRepository implements MedicationRepository {
     this.medications.push({ ...med });
   }
 
+  deleteMedication(medicationId: string): void {
+    const index = this.medications.findIndex((m) => m.id === medicationId);
+    if (index === -1) {
+      throw new Error(`Medication not found: ${medicationId}`);
+    }
+    this.medications.splice(index, 1);
+    this.doses = this.doses.filter((d) => d.medicationId !== medicationId);
+  }
+
   addDoses(doses: Dose[]): void {
     for (const dose of doses) {
       const exists = this.doses.some(
