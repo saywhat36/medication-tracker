@@ -133,6 +133,32 @@ export function runRepositoryTests(makeRepo: () => MedicationRepository) {
     });
   });
 
+  describe('ensureDosesForDay', () => {
+    it('creates a dose per scheduled time for a day that has none yet', () => {
+      const repo = makeRepo();
+      // SEED_MED is scheduled at 08:00; a fresh day has no doses.
+      const doses = repo.ensureDosesForDay('2026-06-27');
+      expect(doses).toHaveLength(1);
+      expect(doses[0].scheduledFor).toBe('2026-06-27T08:00:00Z');
+      expect(doses[0].takenAt).toBeNull();
+    });
+
+    it('is idempotent — running twice does not duplicate doses', () => {
+      const repo = makeRepo();
+      repo.ensureDosesForDay('2026-06-27');
+      const doses = repo.ensureDosesForDay('2026-06-27');
+      expect(doses).toHaveLength(1);
+    });
+
+    it('preserves the taken state of an existing dose', () => {
+      const repo = makeRepo();
+      repo.markTaken('med-1', '2026-06-25T08:00:00Z', '2026-06-25T08:07:00Z');
+      const doses = repo.ensureDosesForDay('2026-06-25');
+      const eight = doses.find((d) => d.scheduledFor === '2026-06-25T08:00:00Z');
+      expect(eight?.takenAt).toBe('2026-06-25T08:07:00Z');
+    });
+  });
+
   describe('getRefillStatuses', () => {
     it('returns a RefillStatus for each medication', () => {
       const repo = makeRepo();

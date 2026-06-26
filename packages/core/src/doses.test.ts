@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { dosesDueAt, dosesForDay, isOverdue } from './doses.js';
-import type { Dose } from './types.js';
+import { dosesDueAt, dosesForDay, scheduledDosesForDay, isOverdue } from './doses.js';
+import type { Dose, Medication } from './types.js';
 
 const taken: Dose = {
   medicationId: 'med-1',
@@ -57,6 +57,42 @@ describe('dosesForDay', () => {
 
   it('returns an empty array when no doses fall on the day', () => {
     expect(dosesForDay([pending], '2026-06-24')).toEqual([]);
+  });
+});
+
+describe('scheduledDosesForDay', () => {
+  const meds: Medication[] = [
+    {
+      id: 'med-1',
+      name: 'Metformin',
+      pillsAtPickup: 30,
+      lastPickupDate: '2026-06-25',
+      dosesPerDay: 2,
+      refillLeadTimeDays: 7,
+      schedule: ['08:00', '21:00'],
+    },
+    {
+      id: 'med-2',
+      name: 'Lisinopril',
+      pillsAtPickup: 10,
+      lastPickupDate: '2026-06-25',
+      dosesPerDay: 1,
+      refillLeadTimeDays: 7,
+      schedule: ['09:00'],
+    },
+  ];
+
+  it('produces one untaken dose per scheduled time per medication', () => {
+    const doses = scheduledDosesForDay(meds, '2026-06-26');
+    expect(doses).toEqual([
+      { medicationId: 'med-1', scheduledFor: '2026-06-26T08:00:00Z', takenAt: null },
+      { medicationId: 'med-1', scheduledFor: '2026-06-26T21:00:00Z', takenAt: null },
+      { medicationId: 'med-2', scheduledFor: '2026-06-26T09:00:00Z', takenAt: null },
+    ]);
+  });
+
+  it('returns an empty array when there are no medications', () => {
+    expect(scheduledDosesForDay([], '2026-06-26')).toEqual([]);
   });
 });
 

@@ -6,6 +6,9 @@ export interface MedicationRepository {
   addDoses(doses: Dose[]): void;
   getDueDoses(now: string): Dose[];
   getDosesForDay(date: string): Dose[];
+  // Materialise each medication's scheduled doses for the given day (idempotent),
+  // then return that day's doses. This is what makes doses recur day after day.
+  ensureDosesForDay(date: string): Dose[];
   markTaken(medicationId: string, scheduledFor: string, takenAt: string): void;
   markUntaken(medicationId: string, scheduledFor: string): void;
   getRefillStatuses(today: string): RefillStatus[];

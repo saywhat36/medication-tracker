@@ -145,6 +145,15 @@ describe('GET /doses/today', () => {
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(2);
   });
+
+  it('materialises doses from the schedule for a day that has none yet', async () => {
+    // med-1 is scheduled at 08:00; no doses exist for 2026-06-28 until requested.
+    const res = await request(makeApp()).get('/doses/today?date=2026-06-28');
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].scheduledFor).toBe('2026-06-28T08:00:00Z');
+    expect(res.body[0].takenAt).toBeNull();
+  });
 });
 
 describe('GET /refill-status', () => {
