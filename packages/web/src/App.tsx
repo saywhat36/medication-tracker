@@ -13,7 +13,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([api.getMedications(), api.getDueDoses(), api.getRefillStatuses()])
+    Promise.all([api.getMedications(), api.getTodaysDoses(), api.getRefillStatuses()])
       .then(([meds, doses, statuses]) => {
         setMedications(meds);
         setDueDoses(doses);
@@ -31,9 +31,15 @@ export default function App() {
     );
   }
 
+  function handleUntaken(scheduledFor: string) {
+    setDueDoses((prev) =>
+      prev.map((d) => (d.scheduledFor === scheduledFor ? { ...d, takenAt: null } : d))
+    );
+  }
+
   function handleMedicationAdded(med: Medication) {
     setMedications((prev) => [...prev, med]);
-    void Promise.all([api.getDueDoses(), api.getRefillStatuses()]).then(([doses, statuses]) => {
+    void Promise.all([api.getTodaysDoses(), api.getRefillStatuses()]).then(([doses, statuses]) => {
       setDueDoses(doses);
       setRefillStatuses(statuses);
     });
@@ -79,6 +85,7 @@ export default function App() {
           doses={dueDoses}
           medications={medications}
           onTaken={handleTaken}
+          onUntaken={handleUntaken}
         />
       </section>
 

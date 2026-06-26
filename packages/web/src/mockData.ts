@@ -21,12 +21,16 @@ export const mockMedications: Medication[] = [
   },
 ];
 
-export const mockDueDoses: Dose[] = [
-  {
-    medicationId: 'med-1',
-    scheduledFor: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    takenAt: null,
-  },
+const todayAt = (hour: number) => {
+  const d = new Date();
+  d.setHours(hour, 0, 0, 0);
+  return d.toISOString();
+};
+
+export const mockTodaysDoses: Dose[] = [
+  // One already taken (so you can try un-ticking it), one still pending.
+  { medicationId: 'med-1', scheduledFor: todayAt(8), takenAt: todayAt(8) },
+  { medicationId: 'med-2', scheduledFor: todayAt(21), takenAt: null },
 ];
 
 export const mockRefillStatuses: RefillStatus[] = [
@@ -36,10 +40,15 @@ export const mockRefillStatuses: RefillStatus[] = [
 
 export const mockClient = {
   getMedications: () => Promise.resolve(mockMedications),
-  getDueDoses: () => Promise.resolve(mockDueDoses),
+  getTodaysDoses: () => Promise.resolve(mockTodaysDoses),
   markTaken: (_medicationId: string, scheduledFor: string) => {
-    const dose = mockDueDoses.find((d) => d.scheduledFor === scheduledFor);
+    const dose = mockTodaysDoses.find((d) => d.scheduledFor === scheduledFor);
     if (dose) dose.takenAt = new Date().toISOString();
+    return Promise.resolve();
+  },
+  markUntaken: (_medicationId: string, scheduledFor: string) => {
+    const dose = mockTodaysDoses.find((d) => d.scheduledFor === scheduledFor);
+    if (dose) dose.takenAt = null;
     return Promise.resolve();
   },
   addMedication: (data: Omit<Medication, 'id'>) => {

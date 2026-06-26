@@ -100,6 +100,53 @@ describe('POST /doses/taken', () => {
   });
 });
 
+describe('DELETE /doses/taken', () => {
+  it('un-marks a previously taken dose so it is due again', async () => {
+    const app = makeApp();
+    await request(app)
+      .post('/doses/taken')
+      .send({ medicationId: 'med-1', scheduledFor: '2026-06-25T08:00:00Z' });
+
+    const res = await request(app)
+      .delete('/doses/taken')
+      .send({ medicationId: 'med-1', scheduledFor: '2026-06-25T08:00:00Z' });
+    expect(res.status).toBe(200);
+    expect(res.body.takenAt).toBeNull();
+
+    const due = await request(app).get('/doses/due');
+    expect(due.body).toHaveLength(1);
+    expect(due.body[0].scheduledFor).toBe('2026-06-25T08:00:00Z');
+  });
+
+  it('returns 404 when the dose does not exist', async () => {
+    const res = await request(makeApp())
+      .delete('/doses/taken')
+      .send({ medicationId: 'med-1', scheduledFor: '2026-06-25T99:00:00Z' });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('GET /doses/today', () => {
+  it('returns all of today\'s doses including taken ones', async () => {
+    const app = makeApp();
+    await request(app)
+      .post('/doses/taken')
+      .send({ medicationId: 'med-1', scheduledFor: '2026-06-25T08:00:00Z' });
+
+    const res = await request(app).get('/doses/today?date=2026-06-25');
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+    const taken = res.body.find((d: { scheduledFor: string }) => d.scheduledFor === '2026-06-25T08:00:00Z');
+    expect(taken.takenAt).toBe(FIXED_NOW);
+  });
+
+  it('defaults to the injected now date when no ?date= is given', async () => {
+    const res = await request(makeApp()).get('/doses/today');
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+  });
+});
+
 describe('GET /refill-status', () => {
   it('returns refill status for all medications', async () => {
     const res = await request(makeApp()).get('/refill-status');

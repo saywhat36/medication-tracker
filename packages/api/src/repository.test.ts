@@ -100,6 +100,39 @@ export function runRepositoryTests(makeRepo: () => MedicationRepository) {
     });
   });
 
+  describe('markUntaken', () => {
+    it('clears takenAt so the dose is due again', () => {
+      const repo = makeRepo();
+      repo.markTaken('med-1', '2026-06-25T08:00:00Z', '2026-06-25T08:07:00Z');
+      expect(repo.getDueDoses('2026-06-25T12:00:00Z')).toHaveLength(0);
+
+      repo.markUntaken('med-1', '2026-06-25T08:00:00Z');
+      const due = repo.getDueDoses('2026-06-25T12:00:00Z');
+      expect(due).toHaveLength(1);
+      expect(due[0].scheduledFor).toBe('2026-06-25T08:00:00Z');
+    });
+
+    it('throws when the dose does not exist', () => {
+      const repo = makeRepo();
+      expect(() => repo.markUntaken('med-1', '2026-06-25T99:00:00Z')).toThrow();
+    });
+  });
+
+  describe('getDosesForDay', () => {
+    it('returns both taken and pending doses for the day', () => {
+      const repo = makeRepo();
+      repo.markTaken('med-1', '2026-06-25T08:00:00Z', '2026-06-25T08:07:00Z');
+      const doses = repo.getDosesForDay('2026-06-25');
+      expect(doses).toHaveLength(2);
+      expect(doses.find((d) => d.scheduledFor === '2026-06-25T08:00:00Z')?.takenAt).not.toBeNull();
+    });
+
+    it('excludes doses on other days', () => {
+      const repo = makeRepo();
+      expect(repo.getDosesForDay('2026-06-24')).toHaveLength(0);
+    });
+  });
+
   describe('getRefillStatuses', () => {
     it('returns a RefillStatus for each medication', () => {
       const repo = makeRepo();
