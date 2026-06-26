@@ -7,10 +7,14 @@ interface Props {
   medications: Medication[];
   onTaken: (scheduledFor: string) => void;
   onUntaken: (scheduledFor: string) => void;
+  onRescheduled: () => void;
 }
 
-export function DoseList({ doses, medications, onTaken, onUntaken }: Props) {
+export function DoseList({ doses, medications, onTaken, onUntaken, onRescheduled }: Props) {
   const [pending, setPending] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draftTime, setDraftTime] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   async function handleToggle(dose: Dose) {
     setPending((s) => new Set(s).add(dose.scheduledFor));
@@ -31,6 +35,27 @@ export function DoseList({ doses, medications, onTaken, onUntaken }: Props) {
     }
   }
 
+  function startEdit(dose: Dose) {
+    setEditing(dose.scheduledFor);
+    setDraftTime(dose.scheduledFor.slice(11, 16));
+  }
+
+  async function saveEdit(dose: Dose) {
+    const oldTime = dose.scheduledFor.slice(11, 16);
+    if (draftTime === oldTime) {
+      setEditing(null);
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      await api.rescheduleMedication(dose.medicationId, oldTime, draftTime);
+      setEditing(null);
+      onRescheduled();
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
   if (doses.length === 0) {
     return <p className="text-sm text-muted-foreground py-2">No doses scheduled today.</p>;
   }
@@ -45,12 +70,9 @@ export function DoseList({ doses, medications, onTaken, onUntaken }: Props) {
           const med = medications.find((m) => m.id === dose.medicationId);
           const isBusy = pending.has(dose.scheduledFor);
           const isTaken = dose.takenAt !== null;
-          // Can't tick a dose before its time; but a taken dose is always un-tickable.
           const isUpcoming = !isTaken && dose.scheduledFor > now;
-          const time = new Date(dose.scheduledFor).toLocaleTimeString(undefined, {
-            hour: '2-digit',
-            minute: '2-digit',
-          });
+          const time = dose.scheduledFor.slice(11, 16);
+          const isEditing = editing === dose.scheduledFor;
 
           return (
             <li
@@ -70,10 +92,48 @@ export function DoseList({ doses, medications, onTaken, onUntaken }: Props) {
               >
                 {med?.name ?? dose.medicationId}
               </span>
-              {isUpcoming ? (
-                <span className="text-xs text-muted-foreground/60 tabular-nums">{time} upcoming</span>
+
+              {isEditing ? (
+                <span className="flex items-center gap-1">
+                  <input
+                    type="time"
+                    value={draftTime}
+                    onChange={(e) => setDraftTime(e.target.value)}
+                    className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+                    aria-label="New dose time"
+                  />
+                  <button
+                    onClick={() => void saveEdit(dose)}
+                    disabled={savingEdit}
+                    className="text-xs text-primary hover:underline disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setEditing(null)}
+                    className="text-xs text-muted-foreground hover:underline"
+                  >
+                    Cancel
+                  </button>
+                </span>
               ) : (
-                <span className="text-xs text-muted-foreground tabular-nums">{time}</span>
+                <span className="flex items-center gap-2">
+                  <span
+                    className={`text-xs tabular-nums ${isUpcoming ? 'text-muted-foreground/60' : 'text-muted-foreground'}`}
+                  >
+                    {time}
+                    {isUpcoming ? ' upcoming' : ''}
+                  </span>
+                  {!isTaken && (
+                    <button
+                      onClick={() => startEdit(dose)}
+                      className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                      aria-label={`Change time for ${med?.name ?? dose.medicationId}`}
+                    >
+                      Edit
+                    </button>
+                  )}
+                </span>
               )}
             </li>
           );

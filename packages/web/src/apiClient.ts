@@ -41,6 +41,13 @@ export const apiClient = {
   deleteMedication: (id: string) =>
     fetch(`${BASE}/medications/${id}`, { method: 'DELETE' }).then((r) => json<void>(r)),
 
+  rescheduleMedication: (id: string, oldTime: string, newTime: string) =>
+    fetch(`${BASE}/medications/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldTime, newTime }),
+    }).then((r) => json<void>(r)),
+
   getRefillStatuses: () =>
     fetch(`${BASE}/refill-status`).then((r) => json<RefillStatus[]>(r)),
 };

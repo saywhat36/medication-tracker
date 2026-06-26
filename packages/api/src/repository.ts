@@ -13,5 +13,13 @@ export interface MedicationRepository {
   ensureDosesForDay(date: string): Dose[];
   markTaken(medicationId: string, scheduledFor: string, takenAt: string): void;
   markUntaken(medicationId: string, scheduledFor: string): void;
+  // Change a medication's scheduled time, moving its untaken doses on/after
+  // fromDate from oldTime to newTime. Taken doses (history) are left untouched.
+  rescheduleMedication(
+    medicationId: string,
+    oldTime: string,
+    newTime: string,
+    fromDate: string
+  ): void;
   getRefillStatuses(today: string): RefillStatus[];
 }

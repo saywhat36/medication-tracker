@@ -137,6 +137,38 @@ export function runRepositoryTests(makeRepo: () => MedicationRepository) {
     });
   });
 
+  describe('rescheduleMedication', () => {
+    it('moves an untaken dose on/after fromDate to the new time', () => {
+      const repo = makeRepo();
+      repo.rescheduleMedication('med-1', '08:00', '10:00', '2026-06-25');
+      const doses = repo.getDosesForDay('2026-06-25').map((d) => d.scheduledFor).sort();
+      expect(doses).toContain('2026-06-25T10:00:00Z');
+      expect(doses).not.toContain('2026-06-25T08:00:00Z');
+    });
+
+    it('updates the medication schedule', () => {
+      const repo = makeRepo();
+      repo.rescheduleMedication('med-1', '08:00', '10:00', '2026-06-25');
+      expect(repo.listMedications()[0].schedule).toEqual(['10:00']);
+    });
+
+    it('leaves a dose that was already taken at the old time untouched', () => {
+      const repo = makeRepo();
+      repo.markTaken('med-1', '2026-06-25T08:00:00Z', '2026-06-25T08:05:00Z');
+      repo.rescheduleMedication('med-1', '08:00', '10:00', '2026-06-25');
+      const doses = repo.getDosesForDay('2026-06-25');
+      const taken = doses.find((d) => d.scheduledFor === '2026-06-25T08:00:00Z');
+      expect(taken?.takenAt).toBe('2026-06-25T08:05:00Z');
+      // no new untaken dose created at the new time, since today's was already taken
+      expect(doses.find((d) => d.scheduledFor === '2026-06-25T10:00:00Z')).toBeUndefined();
+    });
+
+    it('throws when the medication does not exist', () => {
+      const repo = makeRepo();
+      expect(() => repo.rescheduleMedication('nope', '08:00', '10:00', '2026-06-25')).toThrow();
+    });
+  });
+
   describe('getDosesForDay', () => {
     it('returns both taken and pending doses for the day', () => {
       const repo = makeRepo();
