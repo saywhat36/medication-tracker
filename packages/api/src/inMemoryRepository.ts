@@ -1,4 +1,4 @@
-import { dosesDueAt, dosesForDay, getRefillStatus } from '@medication-tracker/core';
+import { dosesDueAt, dosesForDay, scheduledDosesForDay, getRefillStatus } from '@medication-tracker/core';
 import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
 import type { MedicationRepository } from './repository.js';
 
@@ -33,6 +33,11 @@ export class InMemoryMedicationRepository implements MedicationRepository {
   }
 
   getDosesForDay(date: string): Dose[] {
+    return dosesForDay(this.doses, date);
+  }
+
+  ensureDosesForDay(date: string): Dose[] {
+    this.addDoses(scheduledDosesForDay(this.medications, date));
     return dosesForDay(this.doses, date);
   }
 

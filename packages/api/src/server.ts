@@ -25,14 +25,7 @@ export function createServer(
     };
     const med = { id: randomUUID(), ...body };
     repo.addMedication(med);
-    const today = now().slice(0, 10);
-    repo.addDoses(
-      med.schedule.map((time) => ({
-        medicationId: med.id,
-        scheduledFor: `${today}T${time}:00Z`,
-        takenAt: null,
-      }))
-    );
+    repo.ensureDosesForDay(now().slice(0, 10));
     res.status(201).json(med);
   });
 
@@ -43,7 +36,9 @@ export function createServer(
 
   app.get('/doses/today', (req, res) => {
     const date = (req.query['date'] as string | undefined) ?? now().slice(0, 10);
-    res.json(repo.getDosesForDay(date));
+    // ensure (not just get) so each medication's scheduled doses exist for the
+    // day — this is what makes doses appear every day, not only on the add day.
+    res.json(repo.ensureDosesForDay(date));
   });
 
   app.post('/doses/taken', (req, res) => {
