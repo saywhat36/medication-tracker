@@ -1,20 +1,22 @@
 export interface Medication {
   id: string;
   name: string;
-  pillsRemaining: number;       // pills physically on hand right now
-  dosesPerDay: number;          // doses taken each day (must be > 0)
-  refillLeadTimeDays: number;   // days before running out to reorder
-  schedule: string[];           // times of day, 24h, e.g. ["08:00", "21:00"]
+  pillsAtPickup: number;         // pills collected at last prescription pickup
+  lastPickupDate: string;        // ISO date of that pickup, e.g. "2026-06-25"
+  dosesPerDay: number;           // doses taken each day (must be > 0)
+  refillLeadTimeDays: number;    // days before running out to reorder
+  schedule: string[];            // times of day, 24h, e.g. ["08:00", "21:00"]
 }
 
 export interface Dose {
   medicationId: string;
-  scheduledFor: string;         // ISO timestamp the dose is due
-  takenAt: string | null;       // ISO timestamp when ticked off, else null
+  scheduledFor: string;          // ISO timestamp the dose is due
+  takenAt: string | null;        // ISO timestamp when ticked off, else null
 }
 
 export interface RefillStatus {
   medicationId: string;
-  daysUntilRefill: number;      // may be negative (already overdue to reorder)
-  refillDate: string;           // ISO date when a refill is needed
+  pillsRemaining: number;        // computed: pills left as of today
+  daysUntilRefill: number;       // may be negative (already overdue to reorder)
+  refillDate: string;            // ISO date when a refill is needed
 }

@@ -17,7 +17,8 @@ export function createServer(
   app.post('/medications', (req, res) => {
     const body = req.body as {
       name: string;
-      pillsRemaining: number;
+      pillsAtPickup: number;
+      lastPickupDate: string;
       dosesPerDay: number;
       refillLeadTimeDays: number;
       schedule: string[];
