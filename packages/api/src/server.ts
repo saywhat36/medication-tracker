@@ -29,6 +29,18 @@ export function createServer(
     res.status(201).json(med);
   });
 
+  app.patch('/medications/:id', (req, res) => {
+    const { id } = req.params;
+    const { oldTime, newTime } = req.body as { oldTime: string; newTime: string };
+    const fromDate = now().slice(0, 10);
+    try {
+      repo.rescheduleMedication(id, oldTime, newTime, fromDate);
+      res.json({ id, oldTime, newTime });
+    } catch (err) {
+      res.status(404).json({ error: (err as Error).message });
+    }
+  });
+
   app.delete('/medications/:id', (req, res) => {
     const { id } = req.params;
     try {

@@ -100,6 +100,42 @@ export class SqliteMedicationRepository implements MedicationRepository {
     this.setTakenAt(medicationId, scheduledFor, null);
   }
 
+  rescheduleMedication(
+    medicationId: string,
+    oldTime: string,
+    newTime: string,
+    fromDate: string
+  ): void {
+    const med = this.listMedications().find((m) => m.id === medicationId);
+    if (!med) {
+      throw new Error(`Medication not found: ${medicationId}`);
+    }
+    const newSchedule = med.schedule.map((t) => (t === oldTime ? newTime : t));
+    this.db
+      .prepare('UPDATE medications SET schedule = ? WHERE id = ?')
+      .run(JSON.stringify(newSchedule), medicationId);
+
+    const allDoses = (this.db.prepare('SELECT * FROM doses').all() as Record<string, unknown>[]).map(
+      toDose
+    );
+    const toMove = allDoses.filter(
+      (d) =>
+        d.medicationId === medicationId &&
+        d.takenAt === null &&
+        d.scheduledFor.slice(0, 10) >= fromDate &&
+        d.scheduledFor.slice(11, 16) === oldTime
+    );
+    const del = this.db.prepare('DELETE FROM doses WHERE medication_id = ? AND scheduled_for = ?');
+    for (const d of toMove) del.run(d.medicationId, d.scheduledFor);
+    this.addDoses(
+      toMove.map((d) => ({
+        medicationId,
+        scheduledFor: `${d.scheduledFor.slice(0, 10)}T${newTime}:00Z`,
+        takenAt: null,
+      }))
+    );
+  }
+
   private setTakenAt(medicationId: string, scheduledFor: string, takenAt: string | null): void {
     const result = this.db
       .prepare(

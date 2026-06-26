@@ -68,6 +68,28 @@ describe('POST /medications', () => {
   });
 });
 
+describe('PATCH /medications/:id', () => {
+  it('reschedules the medication, moving today\'s untaken dose to the new time', async () => {
+    const app = makeApp();
+    const res = await request(app)
+      .patch('/medications/med-1')
+      .send({ oldTime: '08:00', newTime: '10:00' });
+    expect(res.status).toBe(200);
+
+    const today = await request(app).get('/doses/today?date=2026-06-25');
+    const times = today.body.map((d: { scheduledFor: string }) => d.scheduledFor);
+    expect(times).toContain('2026-06-25T10:00:00Z');
+    expect(times).not.toContain('2026-06-25T08:00:00Z');
+  });
+
+  it('returns 404 when the medication does not exist', async () => {
+    const res = await request(makeApp())
+      .patch('/medications/nope')
+      .send({ oldTime: '08:00', newTime: '10:00' });
+    expect(res.status).toBe(404);
+  });
+});
+
 describe('DELETE /medications/:id', () => {
   it('deletes the medication and its doses', async () => {
     const app = makeApp();

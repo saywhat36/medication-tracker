@@ -61,5 +61,15 @@ export const mockClient = {
     if (index !== -1) mockMedications.splice(index, 1);
     return Promise.resolve();
   },
+  rescheduleMedication: (id: string, oldTime: string, newTime: string) => {
+    const med = mockMedications.find((m) => m.id === id);
+    if (med) med.schedule = med.schedule.map((t) => (t === oldTime ? newTime : t));
+    for (const dose of mockTodaysDoses) {
+      if (dose.medicationId === id && dose.takenAt === null && dose.scheduledFor.slice(11, 16) === oldTime) {
+        dose.scheduledFor = `${dose.scheduledFor.slice(0, 10)}T${newTime}:00Z`;
+      }
+    }
+    return Promise.resolve();
+  },
   getRefillStatuses: () => Promise.resolve(mockRefillStatuses),
 };

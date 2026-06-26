@@ -46,6 +46,13 @@ export default function App() {
     });
   }
 
+  function handleRescheduled() {
+    void Promise.all([api.getTodaysDoses(), api.getMedications()]).then(([doses, meds]) => {
+      setDueDoses(doses);
+      setMedications(meds);
+    });
+  }
+
   function handleMedicationDeleted(id: string) {
     setMedications((prev) => prev.filter((m) => m.id !== id));
     void Promise.all([api.getTodaysDoses(), api.getRefillStatuses()]).then(([doses, statuses]) => {
@@ -95,6 +102,7 @@ export default function App() {
           medications={medications}
           onTaken={handleTaken}
           onUntaken={handleUntaken}
+          onRescheduled={handleRescheduled}
         />
       </section>
 

@@ -58,6 +58,38 @@ export class InMemoryMedicationRepository implements MedicationRepository {
     this.findDose(medicationId, scheduledFor).takenAt = null;
   }
 
+  rescheduleMedication(
+    medicationId: string,
+    oldTime: string,
+    newTime: string,
+    fromDate: string
+  ): void {
+    const med = this.medications.find((m) => m.id === medicationId);
+    if (!med) {
+      throw new Error(`Medication not found: ${medicationId}`);
+    }
+    med.schedule = med.schedule.map((t) => (t === oldTime ? newTime : t));
+
+    const moved: Dose[] = [];
+    this.doses = this.doses.filter((d) => {
+      const shouldMove =
+        d.medicationId === medicationId &&
+        d.takenAt === null &&
+        d.scheduledFor.slice(0, 10) >= fromDate &&
+        d.scheduledFor.slice(11, 16) === oldTime;
+      if (shouldMove) {
+        moved.push({
+          medicationId,
+          scheduledFor: `${d.scheduledFor.slice(0, 10)}T${newTime}:00Z`,
+          takenAt: null,
+        });
+        return false;
+      }
+      return true;
+    });
+    this.addDoses(moved);
+  }
+
   private findDose(medicationId: string, scheduledFor: string): Dose {
     const dose = this.doses.find(
       (d) => d.medicationId === medicationId && d.scheduledFor === scheduledFor
