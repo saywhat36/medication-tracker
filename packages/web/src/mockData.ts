@@ -4,7 +4,8 @@ export const mockMedications: Medication[] = [
   {
     id: 'med-1',
     name: 'Metformin',
-    pillsRemaining: 30,
+    pillsAtPickup: 30,
+    lastPickupDate: '2026-06-25',
     dosesPerDay: 1,
     refillLeadTimeDays: 7,
     schedule: ['08:00'],
@@ -12,7 +13,8 @@ export const mockMedications: Medication[] = [
   {
     id: 'med-2',
     name: 'Lisinopril',
-    pillsRemaining: 10,
+    pillsAtPickup: 10,
+    lastPickupDate: '2026-06-25',
     dosesPerDay: 1,
     refillLeadTimeDays: 7,
     schedule: ['21:00'],
@@ -28,8 +30,8 @@ export const mockDueDoses: Dose[] = [
 ];
 
 export const mockRefillStatuses: RefillStatus[] = [
-  { medicationId: 'med-1', daysUntilRefill: 23, refillDate: '2026-07-18' },
-  { medicationId: 'med-2', daysUntilRefill: 3, refillDate: '2026-06-28' },
+  { medicationId: 'med-1', pillsRemaining: 30, daysUntilRefill: 23, refillDate: '2026-07-18' },
+  { medicationId: 'med-2', pillsRemaining: 10, daysUntilRefill: 3, refillDate: '2026-06-28' },
 ];
 
 export const mockClient = {

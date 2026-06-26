@@ -1,39 +1,63 @@
 import { describe, it, expect } from 'vitest';
-import { daysUntilRefill, refillDate, getRefillStatus } from './refill.js';
+import { pillsRemaining, daysUntilRefill, refillDate, getRefillStatus } from './refill.js';
 import type { Medication } from './types.js';
 
+const TODAY = '2026-06-25';
+
+// Picked up 30 pills on 2026-06-25 (today), so none consumed yet.
 const base: Medication = {
   id: 'med-1',
   name: 'Test pill',
-  pillsRemaining: 30,
+  pillsAtPickup: 30,
+  lastPickupDate: '2026-06-25',
   dosesPerDay: 1,
   refillLeadTimeDays: 7,
   schedule: ['17:00'],
 };
 
+describe('pillsRemaining', () => {
+  it('returns pillsAtPickup on the day of pickup (no doses consumed)', () => {
+    expect(pillsRemaining(base, '2026-06-25')).toBe(30);
+  });
+
+  it('subtracts one pill per day of supply consumed', () => {
+    expect(pillsRemaining(base, '2026-07-05')).toBe(20); // 10 days later
+  });
+
+  it('floors partial days (does not subtract until a full day has elapsed)', () => {
+    // 2 doses/day, 10 days later = 20 consumed → 10 remaining
+    expect(pillsRemaining({ ...base, dosesPerDay: 2 }, '2026-07-05')).toBe(10);
+  });
+
+  it('clamps to zero rather than going negative', () => {
+    expect(pillsRemaining(base, '2027-01-01')).toBe(0); // well past empty
+  });
+});
+
 describe('daysUntilRefill', () => {
   it('returns days of supply minus lead time', () => {
-    expect(daysUntilRefill(base)).toBe(23); // 30 days supply − 7 lead
+    // 30 pills, 1/day → 30 days supply − 7 lead = 23
+    expect(daysUntilRefill(base, TODAY)).toBe(23);
   });
 
   it('floors partial days of supply', () => {
     // 31 pills / 2 per day = 15.5 → floor to 15, minus 7 lead = 8
-    expect(daysUntilRefill({ ...base, pillsRemaining: 31, dosesPerDay: 2 })).toBe(8);
+    expect(daysUntilRefill({ ...base, pillsAtPickup: 31, dosesPerDay: 2 }, TODAY)).toBe(8);
   });
 
   it('returns a negative number when already past the reorder point', () => {
-    // 3 days supply − 7 lead = −4 (overdue; not clamped)
-    expect(daysUntilRefill({ ...base, pillsRemaining: 3 })).toBe(-4);
+    // picked up 3 pills today → 3 days supply − 7 lead = −4
+    expect(daysUntilRefill({ ...base, pillsAtPickup: 3 }, TODAY)).toBe(-4);
   });
 
   it('throws when dosesPerDay is zero', () => {
-    expect(() => daysUntilRefill({ ...base, dosesPerDay: 0 })).toThrow(
+    expect(() => daysUntilRefill({ ...base, dosesPerDay: 0 }, TODAY)).toThrow(
       'dosesPerDay must be greater than 0'
     );
   });
 
   it('throws when dosesPerDay is negative', () => {
-    expect(() => daysUntilRefill({ ...base, dosesPerDay: -1 })).toThrow(
+    expect(() => daysUntilRefill({ ...base, dosesPerDay: -1 }, TODAY)).toThrow(
       'dosesPerDay must be greater than 0'
     );
   });
@@ -41,21 +65,20 @@ describe('daysUntilRefill', () => {
 
 describe('refillDate', () => {
   it('returns an ISO date string offset by daysUntilRefill', () => {
-    // base: 30 pills, 1/day, lead 7 → daysUntilRefill = 23
-    expect(refillDate(base, '2026-06-25')).toBe('2026-07-18');
+    expect(refillDate(base, TODAY)).toBe('2026-07-18');
   });
 
   it('returns a past date when already overdue', () => {
-    // 3 pills, 1/day, lead 7 → daysUntilRefill = -4
-    expect(refillDate({ ...base, pillsRemaining: 3 }, '2026-06-25')).toBe('2026-06-21');
+    expect(refillDate({ ...base, pillsAtPickup: 3 }, TODAY)).toBe('2026-06-21');
   });
 });
 
 describe('getRefillStatus', () => {
-  it('returns a complete RefillStatus for a medication', () => {
-    const status = getRefillStatus(base, '2026-06-25');
+  it('returns a complete RefillStatus including computed pillsRemaining', () => {
+    const status = getRefillStatus(base, TODAY);
     expect(status).toEqual({
       medicationId: 'med-1',
+      pillsRemaining: 30,
       daysUntilRefill: 23,
       refillDate: '2026-07-18',
     });

@@ -6,7 +6,8 @@ import { runRepositoryTests } from './repository.test.js';
 const SEED_MED = {
   id: 'med-1',
   name: 'Metformin',
-  pillsRemaining: 30,
+  pillsAtPickup: 30,
+  lastPickupDate: '2026-06-25',
   dosesPerDay: 1,
   refillLeadTimeDays: 7,
   schedule: ['08:00'],

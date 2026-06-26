@@ -11,8 +11,11 @@ export function AddMedicationForm({ onAdded, onSubmit }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const today = new Date().toISOString().slice(0, 10);
+
   const [name, setName] = useState('');
-  const [pillsRemaining, setPillsRemaining] = useState('');
+  const [pillsAtPickup, setPillsAtPickup] = useState('');
+  const [lastPickupDate, setLastPickupDate] = useState(today);
   const [dosesPerDay, setDosesPerDay] = useState('1');
   const [refillLeadTimeDays, setRefillLeadTimeDays] = useState('7');
   const [scheduleTime, setScheduleTime] = useState('09:00');
@@ -24,7 +27,8 @@ export function AddMedicationForm({ onAdded, onSubmit }: Props) {
     try {
       const med = await onSubmit({
         name: name.trim(),
-        pillsRemaining: Number(pillsRemaining),
+        pillsAtPickup: Number(pillsAtPickup),
+        lastPickupDate,
         dosesPerDay: Number(dosesPerDay),
         refillLeadTimeDays: Number(refillLeadTimeDays),
         schedule: [scheduleTime],
@@ -32,7 +36,8 @@ export function AddMedicationForm({ onAdded, onSubmit }: Props) {
       onAdded(med);
       setOpen(false);
       setName('');
-      setPillsRemaining('');
+      setPillsAtPickup('');
+      setLastPickupDate(today);
       setDosesPerDay('1');
       setRefillLeadTimeDays('7');
       setScheduleTime('09:00');
@@ -70,13 +75,24 @@ export function AddMedicationForm({ onAdded, onSubmit }: Props) {
       </label>
 
       <label className="block space-y-1">
-        <span className="text-xs text-muted-foreground">Pills in hand right now</span>
+        <span className="text-xs text-muted-foreground">Date of last prescription pickup</span>
+        <input
+          required
+          type="date"
+          value={lastPickupDate}
+          onChange={(e) => setLastPickupDate(e.target.value)}
+          className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+        />
+      </label>
+
+      <label className="block space-y-1">
+        <span className="text-xs text-muted-foreground">Pills collected at that pickup</span>
         <input
           required
           type="number"
-          min="0"
-          value={pillsRemaining}
-          onChange={(e) => setPillsRemaining(e.target.value)}
+          min="1"
+          value={pillsAtPickup}
+          onChange={(e) => setPillsAtPickup(e.target.value)}
           placeholder="e.g. 30"
           className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
         />
@@ -95,7 +111,7 @@ export function AddMedicationForm({ onAdded, onSubmit }: Props) {
       </label>
 
       <label className="block space-y-1">
-        <span className="text-xs text-muted-foreground">Refill lead time (days before empty to remind)</span>
+        <span className="text-xs text-muted-foreground">Remind me to refill this many days before running out</span>
         <input
           required
           type="number"
