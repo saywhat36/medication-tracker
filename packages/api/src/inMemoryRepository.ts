@@ -1,4 +1,4 @@
-import { dosesDueAt, getRefillStatus } from '@medication-tracker/core';
+import { dosesDueAt, dosesForDay, getRefillStatus } from '@medication-tracker/core';
 import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
 import type { MedicationRepository } from './repository.js';
 
@@ -32,14 +32,26 @@ export class InMemoryMedicationRepository implements MedicationRepository {
     return dosesDueAt(this.doses, now);
   }
 
+  getDosesForDay(date: string): Dose[] {
+    return dosesForDay(this.doses, date);
+  }
+
   markTaken(medicationId: string, scheduledFor: string, takenAt: string): void {
+    this.findDose(medicationId, scheduledFor).takenAt = takenAt;
+  }
+
+  markUntaken(medicationId: string, scheduledFor: string): void {
+    this.findDose(medicationId, scheduledFor).takenAt = null;
+  }
+
+  private findDose(medicationId: string, scheduledFor: string): Dose {
     const dose = this.doses.find(
       (d) => d.medicationId === medicationId && d.scheduledFor === scheduledFor
     );
     if (!dose) {
       throw new Error(`Dose not found: ${medicationId} at ${scheduledFor}`);
     }
-    dose.takenAt = takenAt;
+    return dose;
   }
 
   getRefillStatuses(today: string): RefillStatus[] {

@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import { getRefillStatus, dosesDueAt } from '@medication-tracker/core';
+import { getRefillStatus, dosesDueAt, dosesForDay } from '@medication-tracker/core';
 import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
 import type { MedicationRepository } from './repository.js';
 
@@ -71,7 +71,20 @@ export class SqliteMedicationRepository implements MedicationRepository {
     return dosesDueAt(rows.map(toDose), now);
   }
 
+  getDosesForDay(date: string): Dose[] {
+    const rows = this.db.prepare('SELECT * FROM doses').all() as Record<string, unknown>[];
+    return dosesForDay(rows.map(toDose), date);
+  }
+
   markTaken(medicationId: string, scheduledFor: string, takenAt: string): void {
+    this.setTakenAt(medicationId, scheduledFor, takenAt);
+  }
+
+  markUntaken(medicationId: string, scheduledFor: string): void {
+    this.setTakenAt(medicationId, scheduledFor, null);
+  }
+
+  private setTakenAt(medicationId: string, scheduledFor: string, takenAt: string | null): void {
     const result = this.db
       .prepare(
         `UPDATE doses SET taken_at = ? WHERE medication_id = ? AND scheduled_for = ?`

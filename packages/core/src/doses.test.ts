@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dosesDueAt, isOverdue } from './doses.js';
+import { dosesDueAt, dosesForDay, isOverdue } from './doses.js';
 import type { Dose } from './types.js';
 
 const taken: Dose = {
@@ -42,6 +42,21 @@ describe('dosesDueAt', () => {
 
   it('handles a mixed list correctly', () => {
     expect(dosesDueAt([pending, taken, future], now)).toEqual([pending]);
+  });
+});
+
+describe('dosesForDay', () => {
+  it('returns both taken and pending doses on the given day', () => {
+    expect(dosesForDay([pending, taken], '2026-06-25')).toEqual([pending, taken]);
+  });
+
+  it('excludes doses scheduled on a different day', () => {
+    const tomorrow: Dose = { ...pending, scheduledFor: '2026-06-26T08:00:00Z' };
+    expect(dosesForDay([pending, tomorrow], '2026-06-25')).toEqual([pending]);
+  });
+
+  it('returns an empty array when no doses fall on the day', () => {
+    expect(dosesForDay([pending], '2026-06-24')).toEqual([]);
   });
 });
 

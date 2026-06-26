@@ -41,6 +41,11 @@ export function createServer(
     res.json(repo.getDueDoses(at));
   });
 
+  app.get('/doses/today', (req, res) => {
+    const date = (req.query['date'] as string | undefined) ?? now().slice(0, 10);
+    res.json(repo.getDosesForDay(date));
+  });
+
   app.post('/doses/taken', (req, res) => {
     const { medicationId, scheduledFor } = req.body as {
       medicationId: string;
@@ -50,6 +55,19 @@ export function createServer(
     try {
       repo.markTaken(medicationId, scheduledFor, takenAt);
       res.json({ medicationId, scheduledFor, takenAt });
+    } catch (err) {
+      res.status(404).json({ error: (err as Error).message });
+    }
+  });
+
+  app.delete('/doses/taken', (req, res) => {
+    const { medicationId, scheduledFor } = req.body as {
+      medicationId: string;
+      scheduledFor: string;
+    };
+    try {
+      repo.markUntaken(medicationId, scheduledFor);
+      res.json({ medicationId, scheduledFor, takenAt: null });
     } catch (err) {
       res.status(404).json({ error: (err as Error).message });
     }
