@@ -2,6 +2,7 @@ import { describe, beforeAll, afterAll } from 'vitest';
 import type { Dose, Medication } from '@medication-tracker/core';
 import { runRepositoryTests } from './repository.test.js';
 import { PostgresMedicationRepository, createPgPool } from './postgresRepository.js';
+import { runMigrations } from './migrate.js';
 
 // Opt-in: only runs when TEST_DATABASE_URL points at a Postgres (local Docker or
 // a Neon branch). Keeps the default `npm test` fast and Docker-free.
@@ -28,8 +29,8 @@ describe.skipIf(!url)('PostgresMedicationRepository', () => {
 
   beforeAll(async () => {
     pool = createPgPool(url as string);
+    await runMigrations(pool);
     repo = new PostgresMedicationRepository(pool);
-    await repo.ensureSchema();
   });
 
   afterAll(async () => {
