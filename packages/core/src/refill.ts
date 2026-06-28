@@ -1,23 +1,23 @@
 import type { Medication, RefillStatus } from './types.js';
 
-export function pillsRemaining(med: Medication, today: string): number {
-  const msPerDay = 24 * 60 * 60 * 1000;
-  const daysSince = (Date.parse(today) - Date.parse(med.lastPickupDate)) / msPerDay;
-  return Math.max(0, med.pillsAtPickup - Math.floor(daysSince * med.dosesPerDay));
+// Pills physically left = what you picked up minus the doses you've ticked off
+// since that pickup. (See dosesTakenSincePickup in doses.ts for the count.)
+export function pillsRemaining(med: Medication, takenSincePickup: number): number {
+  return Math.max(0, med.pillsAtPickup - takenSincePickup);
 }
 
-// Whole days of supply left from today (pills remaining ÷ doses per day).
-export function daysOfSupply(med: Medication, today: string): number {
+// Whole days of supply left (pills remaining ÷ doses per day).
+export function daysOfSupply(med: Medication, takenSincePickup: number): number {
   if (med.dosesPerDay <= 0) {
     throw new Error('dosesPerDay must be greater than 0');
   }
-  return Math.floor(pillsRemaining(med, today) / med.dosesPerDay);
+  return Math.floor(pillsRemaining(med, takenSincePickup) / med.dosesPerDay);
 }
 
 // Days until you should reorder = supply left minus the lead time. May be
 // negative (already past the reorder point).
-export function daysUntilRefill(med: Medication, today: string): number {
-  return daysOfSupply(med, today) - med.refillLeadTimeDays;
+export function daysUntilRefill(med: Medication, takenSincePickup: number): number {
+  return daysOfSupply(med, takenSincePickup) - med.refillLeadTimeDays;
 }
 
 function addDays(date: string, days: number): string {
@@ -26,23 +26,27 @@ function addDays(date: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-// The date the pills are expected to run out.
-export function runOutDate(med: Medication, today: string): string {
-  return addDays(today, daysOfSupply(med, today));
+// The date the pills are expected to run out (assuming scheduled use from today).
+export function runOutDate(med: Medication, takenSincePickup: number, today: string): string {
+  return addDays(today, daysOfSupply(med, takenSincePickup));
 }
 
 // The date you should reorder by (lead time before running out). This is also
 // when a refill reminder would be due.
-export function refillDate(med: Medication, today: string): string {
-  return addDays(today, daysUntilRefill(med, today));
+export function refillDate(med: Medication, takenSincePickup: number, today: string): string {
+  return addDays(today, daysUntilRefill(med, takenSincePickup));
 }
 
-export function getRefillStatus(med: Medication, today: string): RefillStatus {
+export function getRefillStatus(
+  med: Medication,
+  takenSincePickup: number,
+  today: string
+): RefillStatus {
   return {
     medicationId: med.id,
-    pillsRemaining: pillsRemaining(med, today),
-    daysUntilRefill: daysUntilRefill(med, today),
-    runOutDate: runOutDate(med, today),
-    refillDate: refillDate(med, today),
+    pillsRemaining: pillsRemaining(med, takenSincePickup),
+    daysUntilRefill: daysUntilRefill(med, takenSincePickup),
+    runOutDate: runOutDate(med, takenSincePickup, today),
+    refillDate: refillDate(med, takenSincePickup, today),
   };
 }
