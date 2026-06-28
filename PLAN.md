@@ -231,3 +231,143 @@ Each MR lists: **Goal**, **In scope**, **Out of scope**, **Key files**, and **Ac
 ## 8. Phase-2 note (context only — do not build yet)
 
 Later, the SQLite repository will be joined by a DynamoDB implementation of the *same* `MedicationRepository` interface, the sweep will be triggered by GitHub Actions (then EventBridge) instead of `node-cron`, and the widget will point at an API Gateway URL instead of localhost. Everything in this plan is structured so those are swaps at the seams, not rewrites. Building the seams cleanly now is what earns that later.
+
+> **Direction update (post Phase 1):** Phase 2 has since been chosen to be **free and non-AWS** — a hosted **Postgres** (instead of DynamoDB), a free API host + **GitHub Actions cron** for reminders (instead of EventBridge), **GitHub Pages** for the web UI, and a **Tauri** desktop widget. The seam-based reasoning above still holds; only the concrete services changed. The detailed Phase 2 plan is **§10** below.
+
+---
+
+## 9. Status — completed since the original plan
+
+Phase 1 (the local app) is built and working. Beyond MR-0…MR-9, the following shipped (out of the original numbering, driven by real use):
+
+- **Local one-command run:** `docker-compose` with three services (`api`, `sweep`, `web`) sharing the `./data` SQLite volume; persistence across restarts.
+- **MR-12 — Add medication:** `POST /medications` + add-medication form; removed auto-seed data.
+- **MR-13 — Computed pills remaining:** `Medication` now stores `pillsAtPickup` + `lastPickupDate`; `pillsRemaining` is a *computed* value (`RefillStatus.pillsRemaining`) rather than stored state. (This supersedes the `pillsRemaining` field shown in §5.)
+- **MR-14 — Tick / un-tick a dose:** taken doses stay visible and can be un-ticked; dashboard reads "today's doses" (taken + pending), not just outstanding ones.
+- **MR-15 — Recurring doses:** each medication's doses are materialised for every day on demand (`ensureDosesForDay`), not only the day it was added; the sweep ensures the day too.
+- **MR-16 — Delete a medication:** removes the medication and all its doses (`DELETE /medications/:id`).
+- **MR-17 — Edit a dose time:** inline time editor in the Due Today list; moves today's + future *untaken* doses to the new time, leaving taken history intact.
+
+**Deferred:** the original **MR-10 / MR-11 (Tauri shell + tray widget)** were not built in Phase 1. They are now absorbed into Phase 2 **Epic D**, where the widget points at the *hosted* API rather than localhost.
+
+---
+
+## 10. Phase 2 — Hosted backbone, reminders, and desktop widget
+
+Phase 2 graduates the app from a local-only tool into a small **single-user hosted service** with three clients (a desktop widget, a hosted web page, and local dev) that all share one cloud database. The repository/notifier seams built in Phase 1 are what make this a series of swaps rather than a rewrite.
+
+### 10.1 Target architecture
+
+```
+        ┌─ Desktop widget (Tauri tray)  ─┐
+        │                                │
+        ├─ Hosted web UI (GitHub Pages) ─┼──▶  Hosted API  ──▶  Hosted DB (Postgres)
+        │                                │          ▲
+        └─ Local dev (docker compose)  ──┘          │
+                                            GitHub Actions cron
+                                            (fires at dose times → /sweep → Telegram)
+```
+
+The hosted API + DB is the single source of truth; every UI is just a client of it. A free host that *sleeps when idle* is fine — the cron is the heartbeat that wakes it at dose times.
+
+### 10.2 Recommended stack
+
+| Piece | Choice | Notes |
+|---|---|---|
+| Database | Neon or Supabase (free Postgres) | Persistent free tier; reached via a new repository implementation |
+| API host | Fly.io or Render (free) | Render free sleeps when idle — acceptable, the cron wakes it |
+| Web UI hosting | GitHub Pages | Free static hosting of the production Vite build |
+| Reminders | GitHub Actions cron → hosted `/sweep` | Free; schedule cron *at dose times* (not frequent polling) to stay punctual and within free minutes |
+| Widget | Tauri | Light on memory/battery; system tray; reuses the React UI |
+
+### 10.3 Phase 2 guiding principles (new constraints)
+
+These are in addition to §2, and are triggered by going public:
+
+1. **Auth before exposure.** The API must require a secret/token before it is reachable on the public internet. No open endpoints over your medication data.
+2. **Migrations, not "delete the DB".** Once data is real and hosted, schema changes go through a migration runner — the local "delete `medications.db`" habit must end.
+3. **Secrets live in env / GitHub Secrets.** Telegram tokens, the API token, and the DB URL are never committed.
+4. **Reuse the seams.** New storage is a new `MedicationRepository` implementation; reminders reuse the existing `Notifier` / `runSweep`. Callers don't change.
+5. **Timezone correctness becomes real.** Times are still stored UTC-naively today; hosted reminders that fire at the right local time make this worth fixing (DST included).
+
+### 10.4 The work, as merge requests
+
+Continues the numbering from the completed MR-17. Same definition of done as §6.
+
+#### Epic A — Cloud backbone (everything depends on this)
+
+**MR-18 — Postgres repository implementation**
+- **Goal:** A `PostgresMedicationRepository` behind the existing `MedicationRepository` interface.
+- **In scope:** New implementation using a Postgres driver; run the **shared repository test suite** against it (Testcontainers or a local Postgres) to prove parity with SQLite; `main.ts` selects SQLite (local) vs Postgres (cloud) by env var.
+- **Out of scope:** Deployment, auth, migrations runner (next MRs).
+- **Key files:** `packages/api/src/postgresRepository.ts`, wiring in `packages/api/src/main.ts`, repo tests.
+- **Acceptance:** The Postgres impl passes the identical shared suite the SQLite impl passes; switching storage is an env change, no caller edits.
+
+**MR-19 — Database migrations**
+- **Goal:** Replace "delete the DB" with versioned migrations.
+- **In scope:** A migration runner (e.g. `node-pg-migrate`) and the initial schema as migration 1; run on startup or via an explicit command; documented.
+- **Out of scope:** Deployment.
+- **Key files:** `packages/api/migrations/*`, migration scripts in `package.json`.
+- **Acceptance:** A fresh database is brought up to schema by running migrations; a schema change is expressed as a new migration, not a manual reset.
+
+**MR-20 — API auth (shared token)**
+- **Goal:** Stop the API being open before it goes public.
+- **In scope:** Middleware requiring a secret token (header) on all data endpoints; token from env; local dev can default-allow via env flag; clear 401 on missing/wrong token.
+- **Out of scope:** Multi-user accounts, OAuth.
+- **Key files:** `packages/api/src/auth.ts` (or middleware), `server.ts`, tests.
+- **Acceptance:** Requests without the token get 401; with it, 200; token is read from env, never committed.
+
+**MR-21 — Deploy API + provision Postgres**
+- **Goal:** The backbone live in the cloud.
+- **In scope:** Provision free Postgres; deploy the API to the chosen host; configure env/secrets (DB URL, API token); point your *local* web app at the hosted API to confirm end-to-end.
+- **Out of scope:** Hosted UI, widget, cron.
+- **Key files:** deploy config (e.g. `fly.toml`), `.env.example` updates, README deploy notes.
+- **Acceptance:** The local web app works fully against the hosted API + Postgres; secrets are configured in the host, not the repo.
+
+#### Epic C — Cloud reminders
+
+**MR-22 — Reminder endpoint + GitHub Actions cron + Telegram**
+- **Goal:** Overdue-aware Telegram reminders, free, in the cloud.
+- **In scope:** A protected `/sweep` (or `/reminders`) trigger that runs `runSweep` against the hosted DB and sends Telegram; a GitHub Actions workflow on a cron schedule (set to your dose times) that calls it with the API token from GitHub Secrets.
+- **Out of scope:** Hosted UI, widget.
+- **Key files:** `.github/workflows/reminders.yml`, a trigger endpoint in `server.ts`, secrets documented.
+- **Acceptance:** At a scheduled time, the workflow calls the endpoint and a real Telegram message is sent for a genuinely overdue dose; nothing fires for doses already taken.
+
+#### Epic D — Desktop widget (supersedes original MR-10 / MR-11)
+
+**MR-23 — Tauri shell against the hosted API**
+- **Goal:** Run the React UI as a desktop app pointed at the hosted API.
+- **In scope:** Initialise Tauri in `packages/web/src-tauri`; load the web build; configure the hosted API URL + token; documented build prerequisites (Rust toolchain).
+- **Out of scope:** Tray behaviour, compact view.
+- **Key files:** `packages/web/src-tauri/*`.
+- **Acceptance:** `tauri dev` launches a native window showing the dashboard, talking to the hosted API.
+
+**MR-24 — Tray widget: start/stop + compact view**
+- **Goal:** The "spin up / turn off like Docker Desktop" widget.
+- **In scope:** System-tray icon; a compact view (today's tick-boxes + refill countdown) reusing existing components; show/hide from the tray; quit closes it; optional launch-at-login; macOS packaging.
+- **Out of scope:** Offline support.
+- **Key files:** `packages/web/src-tauri/*`, a compact route/component in `packages/web`.
+- **Acceptance:** A small widget shows current status and lets you tick today's dose against the hosted DB; closing to tray and reopening works; quitting fully stops it.
+
+#### Epic B — Hosted web UI
+
+**MR-25 — Production build + GitHub Pages deploy**
+- **Goal:** A hosted URL you can open on any device.
+- **In scope:** `vite build` configured with the hosted API URL; a GitHub Actions workflow deploying the static build to GitHub Pages.
+- **Out of scope:** —
+- **Key files:** `.github/workflows/pages.yml`, web build config.
+- **Acceptance:** The Pages URL loads the dashboard against the hosted API.
+- **⚠️ Security wrinkle:** a public static site cannot hide the API token (anyone can read it from the JS). Securing the public UI needs a small login (password → token) or keeping the page password-gated. Decide the approach in this MR; until then, prefer the widget for daily use.
+
+#### Epic E — Polish (optional, as needed)
+
+**MR-26 — Timezone-correct scheduling (+ optional offline widget queue)**
+- **Goal:** Reminders and displayed times correct in your local timezone, DST included.
+- **In scope:** Store/interpret schedule times against a timezone rather than naive UTC; fix display/“upcoming” logic accordingly. *Optional:* offline write-queue in the widget that syncs when reconnected ("write to the DB later").
+- **Out of scope:** —
+- **Key files:** `packages/core/*` (time handling), widget sync if attempted.
+- **Acceptance:** A dose set for 21:00 local fires/display at 21:00 local year-round; (if built) ticks made offline reach the DB once reconnected.
+
+### 10.5 Recommended order
+
+**A → C → D → B**, with E as needed. Build Epic A locally first (MR-18–20 against a local Postgres) before deploying anything — it de-risks the backbone where it's easy to debug and nothing is exposed. Then reminders (high value, low effort once data is hosted), then the widget you most want, then the public web UI last (it's the fiddliest on security). One MR per section, dependencies merged first, as in §7.
