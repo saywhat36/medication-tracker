@@ -24,4 +24,8 @@ export interface MedicationRepository {
     fromDate: string
   ): Promise<void>;
   getRefillStatuses(today: string): Promise<RefillStatus[]>;
+  // Notification log: which doses we've already sent an overdue reminder for,
+  // so a one-shot sweep (e.g. a cron) doesn't re-notify the same dose.
+  getNotifiedDoseKeys(): Promise<string[]>;
+  recordDoseNotified(doseKey: string): Promise<void>;
 }

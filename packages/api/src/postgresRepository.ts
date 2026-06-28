@@ -142,6 +142,18 @@ export class PostgresMedicationRepository implements MedicationRepository {
   async getRefillStatuses(today: string): Promise<RefillStatus[]> {
     return (await this.listMedications()).map((m) => getRefillStatus(m, today));
   }
+
+  async getNotifiedDoseKeys(): Promise<string[]> {
+    const { rows } = await this.pool.query('SELECT dose_key FROM dose_notifications');
+    return (rows as { dose_key: string }[]).map((r) => r.dose_key);
+  }
+
+  async recordDoseNotified(doseKey: string): Promise<void> {
+    await this.pool.query(
+      'INSERT INTO dose_notifications (dose_key) VALUES ($1) ON CONFLICT (dose_key) DO NOTHING',
+      [doseKey]
+    );
+  }
 }
 
 function toMedication(row: Record<string, unknown>): Medication {

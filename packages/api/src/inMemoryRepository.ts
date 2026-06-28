@@ -5,6 +5,7 @@ import type { MedicationRepository } from './repository.js';
 export class InMemoryMedicationRepository implements MedicationRepository {
   private medications: Medication[];
   private doses: Dose[];
+  private notifiedDoseKeys = new Set<string>();
 
   constructor(medications: Medication[], doses: Dose[]) {
     this.medications = medications.map((m) => ({ ...m }));
@@ -102,5 +103,13 @@ export class InMemoryMedicationRepository implements MedicationRepository {
 
   async getRefillStatuses(today: string): Promise<RefillStatus[]> {
     return this.medications.map((m) => getRefillStatus(m, today));
+  }
+
+  async getNotifiedDoseKeys(): Promise<string[]> {
+    return [...this.notifiedDoseKeys];
+  }
+
+  async recordDoseNotified(doseKey: string): Promise<void> {
+    this.notifiedDoseKeys.add(doseKey);
   }
 }

@@ -19,6 +19,10 @@ const SCHEMA = `
     taken_at      TEXT,
     PRIMARY KEY (medication_id, scheduled_for)
   );
+  CREATE TABLE IF NOT EXISTS dose_notifications (
+    dose_key    TEXT PRIMARY KEY,
+    notified_at TEXT
+  );
 `;
 
 // node:sqlite is synchronous; the methods are async only to satisfy the
@@ -151,6 +155,22 @@ export class SqliteMedicationRepository implements MedicationRepository {
 
   async getRefillStatuses(today: string): Promise<RefillStatus[]> {
     return (await this.listMedications()).map((m) => getRefillStatus(m, today));
+  }
+
+  async getNotifiedDoseKeys(): Promise<string[]> {
+    const rows = this.db.prepare('SELECT dose_key FROM dose_notifications').all() as Record<
+      string,
+      unknown
+    >[];
+    return rows.map((r) => r['dose_key'] as string);
+  }
+
+  async recordDoseNotified(doseKey: string): Promise<void> {
+    this.db
+      .prepare(
+        `INSERT OR IGNORE INTO dose_notifications (dose_key, notified_at) VALUES (?, ?)`
+      )
+      .run(doseKey, new Date().toISOString());
   }
 }
 
