@@ -5,8 +5,8 @@ import { api } from '@/api';
 interface Props {
   doses: Dose[];
   medications: Medication[];
-  onTaken: (scheduledFor: string) => void;
-  onUntaken: (scheduledFor: string) => void;
+  onTaken: (medicationId: string, scheduledFor: string) => void;
+  onUntaken: (medicationId: string, scheduledFor: string) => void;
   onRescheduled: () => void;
 }
 
@@ -21,10 +21,10 @@ export function DoseList({ doses, medications, onTaken, onUntaken, onRescheduled
     try {
       if (dose.takenAt === null) {
         await api.markTaken(dose.medicationId, dose.scheduledFor);
-        onTaken(dose.scheduledFor);
+        onTaken(dose.medicationId, dose.scheduledFor);
       } else {
         await api.markUntaken(dose.medicationId, dose.scheduledFor);
-        onUntaken(dose.scheduledFor);
+        onUntaken(dose.medicationId, dose.scheduledFor);
       }
     } finally {
       setPending((s) => {
