@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { runSweep } from './sweep.js';
 import type { Notifier } from './notifier.js';
 import type { MedicationRepository } from '@medication-tracker/api';
-import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
+import type { Dose } from '@medication-tracker/core';
 
 const NOW = '2026-06-25T12:00:00Z'; // 4h after OVERDUE, before FUTURE
 
@@ -24,15 +24,25 @@ const TAKEN_DOSE: Dose = {
   takenAt: '2026-06-25T08:05:00Z',
 };
 
-function fakeRepo(doses: Dose[]): MedicationRepository {
-  // Only getDueDoses is exercised by runSweep; the rest are unused stubs.
-  return {
-    listMedications: async (): Promise<Medication[]> => [],
+// Fake repo with mutable doses and a real (in-memory) notification log, so the
+// idempotency behaviour can be exercised across multiple runSweep calls.
+function fakeRepo(initial: Dose[]) {
+  let doses = initial;
+  const notified = new Set<string>();
+  const repo = {
     getDueDoses: async (now: string) =>
       doses.filter((d) => d.takenAt === null && d.scheduledFor <= now),
-    markTaken: async () => { throw new Error('not implemented'); },
-    getRefillStatuses: async (): Promise<RefillStatus[]> => [],
-  } as MedicationRepository;
+    getNotifiedDoseKeys: async () => [...notified],
+    recordDoseNotified: async (key: string) => {
+      notified.add(key);
+    },
+    listMedications: async () => [],
+    markTaken: async () => {
+      throw new Error('not implemented');
+    },
+    getRefillStatuses: async () => [],
+  } as unknown as MedicationRepository;
+  return { repo, setDoses: (d: Dose[]) => { doses = d; } };
 }
 
 function fakeNotifier(): Notifier & { messages: string[] } {
@@ -46,41 +56,48 @@ function fakeNotifier(): Notifier & { messages: string[] } {
 describe('runSweep', () => {
   it('notifies once for each overdue dose', async () => {
     const notifier = fakeNotifier();
-    await runSweep(fakeRepo([OVERDUE_DOSE]), notifier, NOW);
+    const { repo } = fakeRepo([OVERDUE_DOSE]);
+    await runSweep(repo, notifier, NOW);
     expect(notifier.messages).toHaveLength(1);
     expect(notifier.messages[0]).toContain('med-1');
   });
 
   it('does not notify for a dose within the threshold', async () => {
     const notifier = fakeNotifier();
-    await runSweep(fakeRepo([RECENT_DOSE]), notifier, NOW);
+    const { repo } = fakeRepo([RECENT_DOSE]);
+    await runSweep(repo, notifier, NOW);
     expect(notifier.messages).toHaveLength(0);
   });
 
   it('does not notify for a taken dose', async () => {
     const notifier = fakeNotifier();
-    await runSweep(fakeRepo([TAKEN_DOSE]), notifier, NOW);
+    const { repo } = fakeRepo([TAKEN_DOSE]);
+    await runSweep(repo, notifier, NOW);
     expect(notifier.messages).toHaveLength(0);
   });
 
   it('is idempotent — re-running does not re-notify the same dose', async () => {
     const notifier = fakeNotifier();
-    const notified = await runSweep(fakeRepo([OVERDUE_DOSE]), notifier, NOW);
-    await runSweep(fakeRepo([OVERDUE_DOSE]), notifier, NOW, notified);
+    const { repo } = fakeRepo([OVERDUE_DOSE]);
+    await runSweep(repo, notifier, NOW);
+    await runSweep(repo, notifier, NOW);
     expect(notifier.messages).toHaveLength(1); // still just 1 from the first run
   });
 
-  it('notifies a new overdue dose that was not in a previous run', async () => {
+  it('notifies a new overdue dose that was not notified before', async () => {
     const notifier = fakeNotifier();
+    const { repo, setDoses } = fakeRepo([OVERDUE_DOSE]);
+    await runSweep(repo, notifier, NOW);
     const dose2: Dose = { medicationId: 'med-2', scheduledFor: '2026-06-25T07:00:00Z', takenAt: null };
-    const notified = await runSweep(fakeRepo([OVERDUE_DOSE]), notifier, NOW);
-    await runSweep(fakeRepo([OVERDUE_DOSE, dose2]), notifier, NOW, notified);
+    setDoses([OVERDUE_DOSE, dose2]);
+    await runSweep(repo, notifier, NOW);
     expect(notifier.messages).toHaveLength(2); // original + new
   });
 
-  it('returns a set containing the notified dose key', async () => {
+  it('records the notified dose key in the repository', async () => {
     const notifier = fakeNotifier();
-    const notified = await runSweep(fakeRepo([OVERDUE_DOSE]), notifier, NOW);
-    expect(notified.has('med-1:2026-06-25T08:00:00Z')).toBe(true);
+    const { repo } = fakeRepo([OVERDUE_DOSE]);
+    await runSweep(repo, notifier, NOW);
+    expect(await repo.getNotifiedDoseKeys()).toContain('med-1:2026-06-25T08:00:00Z');
   });
 });

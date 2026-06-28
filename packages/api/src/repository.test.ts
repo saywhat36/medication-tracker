@@ -214,6 +214,22 @@ export function runRepositoryTests(
     });
   });
 
+  describe('notification log', () => {
+    it('records and lists notified dose keys', async () => {
+      const repo = await makeRepo();
+      expect(await repo.getNotifiedDoseKeys()).toHaveLength(0);
+      await repo.recordDoseNotified('med-1:2026-06-25T08:00:00Z');
+      expect(await repo.getNotifiedDoseKeys()).toContain('med-1:2026-06-25T08:00:00Z');
+    });
+
+    it('recording the same key twice is a no-op', async () => {
+      const repo = await makeRepo();
+      await repo.recordDoseNotified('med-1:2026-06-25T08:00:00Z');
+      await repo.recordDoseNotified('med-1:2026-06-25T08:00:00Z');
+      expect(await repo.getNotifiedDoseKeys()).toHaveLength(1);
+    });
+  });
+
   describe('getRefillStatuses', () => {
     it('returns a RefillStatus for each medication', async () => {
       const repo = await makeRepo();

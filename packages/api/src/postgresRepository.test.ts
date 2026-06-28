@@ -40,7 +40,7 @@ describe.skipIf(!url)('PostgresMedicationRepository', () => {
   // Same shared suite the in-memory and SQLite repos pass — proves parity.
   // Reset to the seed state before each test.
   runRepositoryTests(async () => {
-    await pool.query('TRUNCATE medications, doses');
+    await pool.query('TRUNCATE medications, doses, dose_notifications');
     await repo.seed([SEED_MED], SEED_DOSES);
     return repo;
   });

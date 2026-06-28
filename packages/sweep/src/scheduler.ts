@@ -14,7 +14,6 @@ async function main(): Promise<void> {
       : new ConsoleNotifier();
 
   const thresholdHours = Number(process.env['SWEEP_THRESHOLD_HOURS'] ?? 3);
-  let notified = new Set<string>();
 
   async function sweep(): Promise<void> {
     const now = new Date().toISOString();
@@ -23,7 +22,7 @@ async function main(): Promise<void> {
       // Make sure today's doses exist before checking for overdue ones, so
       // reminders fire even on days the dashboard was never opened.
       await repo.ensureDosesForDay(now.slice(0, 10));
-      notified = await runSweep(repo, notifier, now, notified);
+      await runSweep(repo, notifier, now);
     } catch (err) {
       console.error('[sweep] error:', err);
     }
