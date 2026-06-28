@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pillsRemaining, daysUntilRefill, refillDate, getRefillStatus } from './refill.js';
+import { pillsRemaining, daysUntilRefill, runOutDate, refillDate, getRefillStatus } from './refill.js';
 import type { Medication } from './types.js';
 
 const TODAY = '2026-06-25';
@@ -73,6 +73,19 @@ describe('refillDate', () => {
   });
 });
 
+describe('runOutDate', () => {
+  it('returns today plus the whole days of supply', () => {
+    // 30 pills, 1/day from 2026-06-25 → runs out 2026-07-25
+    expect(runOutDate(base, TODAY)).toBe('2026-07-25');
+  });
+
+  it('is the reorder date plus the lead time', () => {
+    // refillDate 2026-07-18 + 7 lead days = 2026-07-25
+    expect(runOutDate(base, TODAY)).toBe('2026-07-25');
+    expect(refillDate(base, TODAY)).toBe('2026-07-18');
+  });
+});
+
 describe('getRefillStatus', () => {
   it('returns a complete RefillStatus including computed pillsRemaining', () => {
     const status = getRefillStatus(base, TODAY);
@@ -80,6 +93,7 @@ describe('getRefillStatus', () => {
       medicationId: 'med-1',
       pillsRemaining: 30,
       daysUntilRefill: 23,
+      runOutDate: '2026-07-25',
       refillDate: '2026-07-18',
     });
   });

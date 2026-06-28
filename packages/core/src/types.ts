@@ -18,5 +18,6 @@ export interface RefillStatus {
   medicationId: string;
   pillsRemaining: number;        // computed: pills left as of today
   daysUntilRefill: number;       // may be negative (already overdue to reorder)
-  refillDate: string;            // ISO date when a refill is needed
+  runOutDate: string;            // ISO date the pills are expected to run out
+  refillDate: string;            // ISO date to reorder by (when a reminder is due)
 }

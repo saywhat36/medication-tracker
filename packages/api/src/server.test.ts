@@ -238,6 +238,7 @@ describe('GET /refill-status', () => {
     expect(res.body[0].medicationId).toBe('med-1');
     expect(res.body[0].pillsRemaining).toBe(30);
     expect(res.body[0].daysUntilRefill).toBe(23);
+    expect(res.body[0].runOutDate).toBe('2026-07-25');
     expect(res.body[0].refillDate).toBe('2026-07-18');
   });
 });
