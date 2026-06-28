@@ -23,6 +23,15 @@ export function scheduledDosesForDay(medications: Medication[], date: string): D
   );
 }
 
+// How many of a medication's doses have been ticked off since its last pickup.
+// Each ticked dose represents one pill consumed from the current supply.
+export function dosesTakenSincePickup(doses: Dose[], med: Medication): number {
+  const since = `${med.lastPickupDate}T00:00:00Z`;
+  return doses.filter(
+    (d) => d.medicationId === med.id && d.takenAt !== null && d.scheduledFor >= since
+  ).length;
+}
+
 export function isOverdue(dose: Dose, now: string, thresholdHours = 3): boolean {
   if (dose.takenAt !== null) return false;
   const thresholdMs = thresholdHours * 60 * 60 * 1000;

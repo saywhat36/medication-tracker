@@ -1,5 +1,11 @@
 import { DatabaseSync } from 'node:sqlite';
-import { getRefillStatus, dosesDueAt, dosesForDay, scheduledDosesForDay } from '@medication-tracker/core';
+import {
+  getRefillStatus,
+  dosesDueAt,
+  dosesForDay,
+  scheduledDosesForDay,
+  dosesTakenSincePickup,
+} from '@medication-tracker/core';
 import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
 import type { MedicationRepository } from './repository.js';
 
@@ -154,7 +160,11 @@ export class SqliteMedicationRepository implements MedicationRepository {
   }
 
   async getRefillStatuses(today: string): Promise<RefillStatus[]> {
-    return (await this.listMedications()).map((m) => getRefillStatus(m, today));
+    const meds = await this.listMedications();
+    const allDoses = (this.db.prepare('SELECT * FROM doses').all() as Record<string, unknown>[]).map(
+      toDose
+    );
+    return meds.map((m) => getRefillStatus(m, dosesTakenSincePickup(allDoses, m), today));
   }
 
   async getNotifiedDoseKeys(): Promise<string[]> {

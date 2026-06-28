@@ -7,4 +7,10 @@ export {
   refillDate,
   getRefillStatus,
 } from './refill.js';
-export { dosesDueAt, dosesForDay, scheduledDosesForDay, isOverdue } from './doses.js';
+export {
+  dosesDueAt,
+  dosesForDay,
+  scheduledDosesForDay,
+  dosesTakenSincePickup,
+  isOverdue,
+} from './doses.js';

@@ -241,6 +241,13 @@ export function runRepositoryTests(
       expect(statuses[0].runOutDate).toBe('2026-07-25');
       expect(statuses[0].refillDate).toBe('2026-07-18');
     });
+
+    it('reduces pillsRemaining by one for each dose taken since pickup', async () => {
+      const repo = await makeRepo();
+      await repo.markTaken('med-1', '2026-06-25T08:00:00Z', '2026-06-25T08:05:00Z');
+      const statuses = await repo.getRefillStatuses('2026-06-25');
+      expect(statuses[0].pillsRemaining).toBe(29);
+    });
   });
 }
 

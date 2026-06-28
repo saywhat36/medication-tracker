@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { dosesDueAt, dosesForDay, scheduledDosesForDay, isOverdue } from './doses.js';
+import {
+  dosesDueAt,
+  dosesForDay,
+  scheduledDosesForDay,
+  dosesTakenSincePickup,
+  isOverdue,
+} from './doses.js';
 import type { Dose, Medication } from './types.js';
 
 const taken: Dose = {
@@ -93,6 +99,36 @@ describe('scheduledDosesForDay', () => {
 
   it('returns an empty array when there are no medications', () => {
     expect(scheduledDosesForDay([], '2026-06-26')).toEqual([]);
+  });
+});
+
+describe('dosesTakenSincePickup', () => {
+  const med: Medication = {
+    id: 'med-1',
+    name: 'Metformin',
+    pillsAtPickup: 30,
+    lastPickupDate: '2026-06-25',
+    dosesPerDay: 1,
+    refillLeadTimeDays: 7,
+    schedule: ['08:00'],
+  };
+
+  it('counts this medication\'s taken doses on/after the pickup date', () => {
+    const doses: Dose[] = [
+      { medicationId: 'med-1', scheduledFor: '2026-06-25T08:00:00Z', takenAt: '2026-06-25T08:05:00Z' },
+      { medicationId: 'med-1', scheduledFor: '2026-06-26T08:00:00Z', takenAt: '2026-06-26T08:05:00Z' },
+      { medicationId: 'med-1', scheduledFor: '2026-06-26T21:00:00Z', takenAt: null }, // not taken
+      { medicationId: 'med-1', scheduledFor: '2026-06-24T08:00:00Z', takenAt: '2026-06-24T08:05:00Z' }, // before pickup
+      { medicationId: 'med-2', scheduledFor: '2026-06-26T08:00:00Z', takenAt: '2026-06-26T08:05:00Z' }, // other med
+    ];
+    expect(dosesTakenSincePickup(doses, med)).toBe(2);
+  });
+
+  it('is zero when nothing has been taken', () => {
+    const doses: Dose[] = [
+      { medicationId: 'med-1', scheduledFor: '2026-06-25T08:00:00Z', takenAt: null },
+    ];
+    expect(dosesTakenSincePickup(doses, med)).toBe(0);
   });
 });
 
