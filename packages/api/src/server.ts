@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import express from 'express';
 import { isOverdue } from '@medication-tracker/core';
 import type { MedicationRepository } from './repository.js';
+import { createAuthMiddleware } from './auth.js';
 
 // Wrap an async handler so a rejected promise is forwarded to Express's error
 // middleware (a 500) instead of leaving the request hanging.
@@ -14,10 +15,19 @@ function asyncHandler(fn: AsyncHandler): express.RequestHandler {
 
 export function createServer(
   repo: MedicationRepository,
-  now: () => string = () => new Date().toISOString()
+  now: () => string = () => new Date().toISOString(),
+  apiToken?: string
 ): express.Application {
   const app = express();
   app.use(express.json());
+
+  // Public, unauthenticated — used by the container healthcheck.
+  app.get('/health', (_req, res) => {
+    res.json({ ok: true });
+  });
+
+  // Everything below requires the bearer token (unless none is configured).
+  app.use(createAuthMiddleware(apiToken));
 
   app.get(
     '/medications',

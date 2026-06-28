@@ -34,6 +34,39 @@ describe('GET /medications', () => {
   });
 });
 
+describe('auth (when API_TOKEN is configured)', () => {
+  const TOKEN = 'secret-token';
+  function makeSecureApp() {
+    const repo = new InMemoryMedicationRepository([MED], [OVERDUE_DOSE, FUTURE_DOSE]);
+    return createServer(repo, () => FIXED_NOW, TOKEN);
+  }
+
+  it('rejects a request with no token (401)', async () => {
+    const res = await request(makeSecureApp()).get('/medications');
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects a request with the wrong token (401)', async () => {
+    const res = await request(makeSecureApp())
+      .get('/medications')
+      .set('Authorization', 'Bearer wrong');
+    expect(res.status).toBe(401);
+  });
+
+  it('allows a request with the correct bearer token', async () => {
+    const res = await request(makeSecureApp())
+      .get('/medications')
+      .set('Authorization', `Bearer ${TOKEN}`);
+    expect(res.status).toBe(200);
+  });
+
+  it('leaves /health public', async () => {
+    const res = await request(makeSecureApp()).get('/health');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ ok: true });
+  });
+});
+
 describe('POST /medications', () => {
   it('creates a medication and returns 201 with an id', async () => {
     const repo = new InMemoryMedicationRepository([], []);

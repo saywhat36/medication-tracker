@@ -13,7 +13,7 @@ services:
       - path: .env.local
         required: false
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/medications"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
       interval: 5s
       timeout: 3s
       retries: 5
