@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { runSweep } from './sweep.js';
 import type { Notifier } from './notifier.js';
 import type { MedicationRepository } from '@medication-tracker/api';
-import type { Dose } from '@medication-tracker/core';
+import type { Dose, Medication } from '@medication-tracker/core';
 
 const NOW = '2026-06-25T12:00:00Z'; // 4h after OVERDUE, before FUTURE
 
@@ -26,7 +26,7 @@ const TAKEN_DOSE: Dose = {
 
 // Fake repo with mutable doses and a real (in-memory) notification log, so the
 // idempotency behaviour can be exercised across multiple runSweep calls.
-function fakeRepo(initial: Dose[]) {
+function fakeRepo(initial: Dose[], meds: Medication[] = []) {
   let doses = initial;
   const notified = new Set<string>();
   const repo = {
@@ -36,7 +36,7 @@ function fakeRepo(initial: Dose[]) {
     recordDoseNotified: async (key: string) => {
       notified.add(key);
     },
-    listMedications: async () => [],
+    listMedications: async () => meds,
     markTaken: async () => {
       throw new Error('not implemented');
     },
@@ -92,6 +92,24 @@ describe('runSweep', () => {
     setDoses([OVERDUE_DOSE, dose2]);
     await runSweep(repo, notifier, NOW);
     expect(notifier.messages).toHaveLength(2); // original + new
+  });
+
+  it('includes the medication name and time (not the id) in the message', async () => {
+    const notifier = fakeNotifier();
+    const med: Medication = {
+      id: 'med-1',
+      name: 'Metformin',
+      pillsAtPickup: 30,
+      lastPickupDate: '2026-06-25',
+      dosesPerDay: 1,
+      refillLeadTimeDays: 7,
+      schedule: ['08:00'],
+    };
+    const { repo } = fakeRepo([OVERDUE_DOSE], [med]);
+    await runSweep(repo, notifier, NOW);
+    expect(notifier.messages[0]).toContain('Metformin');
+    expect(notifier.messages[0]).toContain('08:00');
+    expect(notifier.messages[0]).not.toContain('med-1');
   });
 
   it('records the notified dose key in the repository', async () => {
