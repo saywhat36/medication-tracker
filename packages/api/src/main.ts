@@ -3,8 +3,12 @@ import { createServer } from './server.js';
 
 async function main(): Promise<void> {
   const repo = await createRepository();
+  const apiToken = process.env['API_TOKEN'];
+  if (!apiToken) {
+    console.warn('[api] API_TOKEN not set — auth disabled (all requests allowed)');
+  }
   const port = Number(process.env['PORT'] ?? 3000);
-  createServer(repo).listen(port, () => {
+  createServer(repo, undefined, apiToken).listen(port, () => {
     console.log(`[api] listening on http://localhost:${port}`);
   });
 }
