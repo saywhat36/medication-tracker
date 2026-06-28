@@ -34,8 +34,8 @@ export const mockTodaysDoses: Dose[] = [
 ];
 
 export const mockRefillStatuses: RefillStatus[] = [
-  { medicationId: 'med-1', pillsRemaining: 30, daysUntilRefill: 23, refillDate: '2026-07-18' },
-  { medicationId: 'med-2', pillsRemaining: 10, daysUntilRefill: 3, refillDate: '2026-06-28' },
+  { medicationId: 'med-1', pillsRemaining: 30, daysUntilRefill: 23, runOutDate: '2026-07-25', refillDate: '2026-07-18' },
+  { medicationId: 'med-2', pillsRemaining: 10, daysUntilRefill: 3, runOutDate: '2026-07-05', refillDate: '2026-06-28' },
 ];
 
 export const mockClient = {
