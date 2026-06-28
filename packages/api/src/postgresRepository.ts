@@ -1,0 +1,188 @@
+import pg from 'pg';
+import type { Pool } from 'pg';
+import { getRefillStatus, dosesDueAt, dosesForDay, scheduledDosesForDay } from '@medication-tracker/core';
+import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
+import type { MedicationRepository } from './repository.js';
+
+const { Pool: PgPool } = pg;
+
+const SCHEMA = `
+  CREATE TABLE IF NOT EXISTS medications (
+    id                    TEXT PRIMARY KEY,
+    name                  TEXT NOT NULL,
+    pills_at_pickup       DOUBLE PRECISION NOT NULL,
+    last_pickup_date      TEXT NOT NULL,
+    doses_per_day         DOUBLE PRECISION NOT NULL,
+    refill_lead_time_days INTEGER NOT NULL,
+    schedule              TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS doses (
+    medication_id TEXT NOT NULL,
+    scheduled_for TEXT NOT NULL,
+    taken_at      TEXT,
+    PRIMARY KEY (medication_id, scheduled_for)
+  );
+`;
+
+// Build a connection pool, enabling SSL for managed hosts (e.g. Neon) and
+// leaving it off for a plain local Postgres.
+export function createPgPool(connectionString: string): Pool {
+  const needsSsl = /sslmode=require/.test(connectionString) || /\.neon\.tech/.test(connectionString);
+  return new PgPool({ connectionString, ssl: needsSsl ? { rejectUnauthorized: false } : undefined });
+}
+
+export class PostgresMedicationRepository implements MedicationRepository {
+  private pool: Pool;
+
+  constructor(pool: Pool) {
+    this.pool = pool;
+  }
+
+  // Create the tables if they don't exist. Call once before use.
+  async ensureSchema(): Promise<void> {
+    await this.pool.query(SCHEMA);
+  }
+
+  // Convenience for seeding (tests / first-run).
+  async seed(medications: Medication[], doses: Dose[]): Promise<void> {
+    for (const med of medications) await this.addMedication(med);
+    await this.addDoses(doses);
+  }
+
+  async close(): Promise<void> {
+    await this.pool.end();
+  }
+
+  async listMedications(): Promise<Medication[]> {
+    const { rows } = await this.pool.query('SELECT * FROM medications');
+    return (rows as Record<string, unknown>[]).map(toMedication);
+  }
+
+  async addMedication(med: Medication): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO medications (id, name, pills_at_pickup, last_pickup_date, doses_per_day, refill_lead_time_days, schedule)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [med.id, med.name, med.pillsAtPickup, med.lastPickupDate, med.dosesPerDay, med.refillLeadTimeDays, JSON.stringify(med.schedule)]
+    );
+  }
+
+  async deleteMedication(medicationId: string): Promise<void> {
+    const result = await this.pool.query('DELETE FROM medications WHERE id = $1', [medicationId]);
+    if (result.rowCount === 0) {
+      throw new Error(`Medication not found: ${medicationId}`);
+    }
+    await this.pool.query('DELETE FROM doses WHERE medication_id = $1', [medicationId]);
+  }
+
+  async addDoses(doses: Dose[]): Promise<void> {
+    for (const dose of doses) {
+      await this.pool.query(
+        `INSERT INTO doses (medication_id, scheduled_for, taken_at) VALUES ($1, $2, $3)
+         ON CONFLICT (medication_id, scheduled_for) DO NOTHING`,
+        [dose.medicationId, dose.scheduledFor, dose.takenAt ?? null]
+      );
+    }
+  }
+
+  async getDueDoses(now: string): Promise<Dose[]> {
+    const { rows } = await this.pool.query('SELECT * FROM doses');
+    return dosesDueAt((rows as Record<string, unknown>[]).map(toDose), now);
+  }
+
+  async getDosesForDay(date: string): Promise<Dose[]> {
+    const { rows } = await this.pool.query('SELECT * FROM doses');
+    return dosesForDay((rows as Record<string, unknown>[]).map(toDose), date);
+  }
+
+  async ensureDosesForDay(date: string): Promise<Dose[]> {
+    await this.addDoses(scheduledDosesForDay(await this.listMedications(), date));
+    return this.getDosesForDay(date);
+  }
+
+  async markTaken(medicationId: string, scheduledFor: string, takenAt: string): Promise<void> {
+    await this.setTakenAt(medicationId, scheduledFor, takenAt);
+  }
+
+  async markUntaken(medicationId: string, scheduledFor: string): Promise<void> {
+    await this.setTakenAt(medicationId, scheduledFor, null);
+  }
+
+  private async setTakenAt(
+    medicationId: string,
+    scheduledFor: string,
+    takenAt: string | null
+  ): Promise<void> {
+    const result = await this.pool.query(
+      'UPDATE doses SET taken_at = $1 WHERE medication_id = $2 AND scheduled_for = $3',
+      [takenAt, medicationId, scheduledFor]
+    );
+    if (result.rowCount === 0) {
+      throw new Error(`Dose not found: ${medicationId} at ${scheduledFor}`);
+    }
+  }
+
+  async rescheduleMedication(
+    medicationId: string,
+    oldTime: string,
+    newTime: string,
+    fromDate: string
+  ): Promise<void> {
+    const med = (await this.listMedications()).find((m) => m.id === medicationId);
+    if (!med) {
+      throw new Error(`Medication not found: ${medicationId}`);
+    }
+    const newSchedule = med.schedule.map((t) => (t === oldTime ? newTime : t));
+    await this.pool.query('UPDATE medications SET schedule = $1 WHERE id = $2', [
+      JSON.stringify(newSchedule),
+      medicationId,
+    ]);
+
+    const { rows } = await this.pool.query('SELECT * FROM doses');
+    const toMove = (rows as Record<string, unknown>[])
+      .map(toDose)
+      .filter(
+        (d) =>
+          d.medicationId === medicationId &&
+          d.takenAt === null &&
+          d.scheduledFor.slice(0, 10) >= fromDate &&
+          d.scheduledFor.slice(11, 16) === oldTime
+      );
+    for (const d of toMove) {
+      await this.pool.query('DELETE FROM doses WHERE medication_id = $1 AND scheduled_for = $2', [
+        d.medicationId,
+        d.scheduledFor,
+      ]);
+    }
+    await this.addDoses(
+      toMove.map((d) => ({
+        medicationId,
+        scheduledFor: `${d.scheduledFor.slice(0, 10)}T${newTime}:00Z`,
+        takenAt: null,
+      }))
+    );
+  }
+
+  async getRefillStatuses(today: string): Promise<RefillStatus[]> {
+    return (await this.listMedications()).map((m) => getRefillStatus(m, today));
+  }
+}
+
+function toMedication(row: Record<string, unknown>): Medication {
+  return {
+    id: row['id'] as string,
+    name: row['name'] as string,
+    pillsAtPickup: Number(row['pills_at_pickup']),
+    lastPickupDate: row['last_pickup_date'] as string,
+    dosesPerDay: Number(row['doses_per_day']),
+    refillLeadTimeDays: Number(row['refill_lead_time_days']),
+    schedule: JSON.parse(row['schedule'] as string) as string[],
+  };
+}
+
+function toDose(row: Record<string, unknown>): Dose {
+  return {
+    medicationId: row['medication_id'] as string,
+    scheduledFor: row['scheduled_for'] as string,
+    takenAt: (row['taken_at'] as string | null) ?? null,
+  };
+}
