@@ -27,7 +27,7 @@ async function sweep() {
   try {
     // Make sure today's doses exist before checking for overdue ones, so
     // reminders fire even on days the dashboard was never opened.
-    repo.ensureDosesForDay(now.slice(0, 10));
+    await repo.ensureDosesForDay(now.slice(0, 10));
     notified = await runSweep(repo, notifier, now, notified);
   } catch (err) {
     console.error('[sweep] error:', err);

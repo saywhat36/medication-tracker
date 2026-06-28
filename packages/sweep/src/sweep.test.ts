@@ -25,12 +25,14 @@ const TAKEN_DOSE: Dose = {
 };
 
 function fakeRepo(doses: Dose[]): MedicationRepository {
+  // Only getDueDoses is exercised by runSweep; the rest are unused stubs.
   return {
-    listMedications: (): Medication[] => [],
-    getDueDoses: (now: string) => doses.filter((d) => d.takenAt === null && d.scheduledFor <= now),
-    markTaken: () => { throw new Error('not implemented'); },
-    getRefillStatuses: (): RefillStatus[] => [],
-  };
+    listMedications: async (): Promise<Medication[]> => [],
+    getDueDoses: async (now: string) =>
+      doses.filter((d) => d.takenAt === null && d.scheduledFor <= now),
+    markTaken: async () => { throw new Error('not implemented'); },
+    getRefillStatuses: async (): Promise<RefillStatus[]> => [],
+  } as MedicationRepository;
 }
 
 function fakeNotifier(): Notifier & { messages: string[] } {

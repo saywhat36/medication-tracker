@@ -13,7 +13,7 @@ export async function runSweep(
   alreadyNotified: ReadonlySet<string> = new Set()
 ): Promise<Set<string>> {
   const notified = new Set(alreadyNotified);
-  const dueDoses = repo.getDueDoses(now);
+  const dueDoses = await repo.getDueDoses(now);
 
   for (const dose of dueDoses) {
     if (!isOverdue(dose, now)) continue;

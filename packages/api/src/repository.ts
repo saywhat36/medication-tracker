@@ -1,18 +1,20 @@
 import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
 
+// All methods are async (return Promises) so the same interface can be backed by
+// a synchronous store (node:sqlite, in-memory) or an asynchronous one (Postgres).
 export interface MedicationRepository {
-  listMedications(): Medication[];
-  addMedication(med: Medication): void;
+  listMedications(): Promise<Medication[]>;
+  addMedication(med: Medication): Promise<void>;
   // Remove a medication and all of its dose records. Throws if it doesn't exist.
-  deleteMedication(medicationId: string): void;
-  addDoses(doses: Dose[]): void;
-  getDueDoses(now: string): Dose[];
-  getDosesForDay(date: string): Dose[];
+  deleteMedication(medicationId: string): Promise<void>;
+  addDoses(doses: Dose[]): Promise<void>;
+  getDueDoses(now: string): Promise<Dose[]>;
+  getDosesForDay(date: string): Promise<Dose[]>;
   // Materialise each medication's scheduled doses for the given day (idempotent),
   // then return that day's doses. This is what makes doses recur day after day.
-  ensureDosesForDay(date: string): Dose[];
-  markTaken(medicationId: string, scheduledFor: string, takenAt: string): void;
-  markUntaken(medicationId: string, scheduledFor: string): void;
+  ensureDosesForDay(date: string): Promise<Dose[]>;
+  markTaken(medicationId: string, scheduledFor: string, takenAt: string): Promise<void>;
+  markUntaken(medicationId: string, scheduledFor: string): Promise<void>;
   // Change a medication's scheduled time, moving its untaken doses on/after
   // fromDate from oldTime to newTime. Taken doses (history) are left untouched.
   rescheduleMedication(
@@ -20,6 +22,6 @@ export interface MedicationRepository {
     oldTime: string,
     newTime: string,
     fromDate: string
-  ): void;
-  getRefillStatuses(today: string): RefillStatus[];
+  ): Promise<void>;
+  getRefillStatuses(today: string): Promise<RefillStatus[]>;
 }
