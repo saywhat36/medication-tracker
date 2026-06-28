@@ -1,0 +1,29 @@
+name: Reminders
+
+on:
+  schedule:
+    # Hourly, on the hour (UTC). GitHub's scheduler can run a few minutes late.
+    - cron: '0 * * * *'
+  # Lets you run it on demand from the Actions tab (handy for testing).
+  workflow_dispatch:
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      # Single overdue-check against the hosted DB; sends Telegram for any
+      # overdue, not-yet-notified dose. Secrets are configured in the repo.
+      - run: npm run sweep:once --workspace @medication-tracker/sweep
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}

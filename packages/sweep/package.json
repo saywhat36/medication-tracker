@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "start": "tsx src/scheduler.ts"
+    "start": "tsx src/scheduler.ts",
+    "sweep:once": "tsx src/run-once.ts"
   },
   "dependencies": {
     "@medication-tracker/api": "*",
