@@ -6,24 +6,6 @@ import type { MedicationRepository } from './repository.js';
 
 const { Pool: PgPool } = pg;
 
-const SCHEMA = `
-  CREATE TABLE IF NOT EXISTS medications (
-    id                    TEXT PRIMARY KEY,
-    name                  TEXT NOT NULL,
-    pills_at_pickup       DOUBLE PRECISION NOT NULL,
-    last_pickup_date      TEXT NOT NULL,
-    doses_per_day         DOUBLE PRECISION NOT NULL,
-    refill_lead_time_days INTEGER NOT NULL,
-    schedule              TEXT NOT NULL
-  );
-  CREATE TABLE IF NOT EXISTS doses (
-    medication_id TEXT NOT NULL,
-    scheduled_for TEXT NOT NULL,
-    taken_at      TEXT,
-    PRIMARY KEY (medication_id, scheduled_for)
-  );
-`;
-
 // Build a connection pool, enabling SSL for managed hosts (e.g. Neon) and
 // leaving it off for a plain local Postgres.
 export function createPgPool(connectionString: string): Pool {
@@ -36,11 +18,6 @@ export class PostgresMedicationRepository implements MedicationRepository {
 
   constructor(pool: Pool) {
     this.pool = pool;
-  }
-
-  // Create the tables if they don't exist. Call once before use.
-  async ensureSchema(): Promise<void> {
-    await this.pool.query(SCHEMA);
   }
 
   // Convenience for seeding (tests / first-run).
