@@ -21,6 +21,8 @@ const SCHEMA = `
   );
 `;
 
+// node:sqlite is synchronous; the methods are async only to satisfy the
+// MedicationRepository interface (shared with the async Postgres implementation).
 export class SqliteMedicationRepository implements MedicationRepository {
   private db: DatabaseSync;
 
@@ -48,11 +50,11 @@ export class SqliteMedicationRepository implements MedicationRepository {
       .run(dose.medicationId, dose.scheduledFor, dose.takenAt ?? null);
   }
 
-  addMedication(med: Medication): void {
+  async addMedication(med: Medication): Promise<void> {
     this.insertMedication(med);
   }
 
-  deleteMedication(medicationId: string): void {
+  async deleteMedication(medicationId: string): Promise<void> {
     const result = this.db
       .prepare('DELETE FROM medications WHERE id = ?')
       .run(medicationId);
@@ -62,7 +64,7 @@ export class SqliteMedicationRepository implements MedicationRepository {
     this.db.prepare('DELETE FROM doses WHERE medication_id = ?').run(medicationId);
   }
 
-  addDoses(doses: Dose[]): void {
+  async addDoses(doses: Dose[]): Promise<void> {
     const stmt = this.db.prepare(
       `INSERT OR IGNORE INTO doses (medication_id, scheduled_for, taken_at) VALUES (?, ?, ?)`
     );
@@ -71,42 +73,53 @@ export class SqliteMedicationRepository implements MedicationRepository {
     }
   }
 
-  listMedications(): Medication[] {
+  async listMedications(): Promise<Medication[]> {
     const rows = this.db.prepare('SELECT * FROM medications').all() as Record<string, unknown>[];
     return rows.map(toMedication);
   }
 
-  getDueDoses(now: string): Dose[] {
+  async getDueDoses(now: string): Promise<Dose[]> {
     const rows = this.db.prepare('SELECT * FROM doses').all() as Record<string, unknown>[];
     return dosesDueAt(rows.map(toDose), now);
   }
 
-  getDosesForDay(date: string): Dose[] {
+  async getDosesForDay(date: string): Promise<Dose[]> {
     const rows = this.db.prepare('SELECT * FROM doses').all() as Record<string, unknown>[];
     return dosesForDay(rows.map(toDose), date);
   }
 
-  ensureDosesForDay(date: string): Dose[] {
+  async ensureDosesForDay(date: string): Promise<Dose[]> {
     // addDoses uses INSERT OR IGNORE, so re-running is a no-op for existing doses.
-    this.addDoses(scheduledDosesForDay(this.listMedications(), date));
+    await this.addDoses(scheduledDosesForDay(await this.listMedications(), date));
     return this.getDosesForDay(date);
   }
 
-  markTaken(medicationId: string, scheduledFor: string, takenAt: string): void {
+  async markTaken(medicationId: string, scheduledFor: string, takenAt: string): Promise<void> {
     this.setTakenAt(medicationId, scheduledFor, takenAt);
   }
 
-  markUntaken(medicationId: string, scheduledFor: string): void {
+  async markUntaken(medicationId: string, scheduledFor: string): Promise<void> {
     this.setTakenAt(medicationId, scheduledFor, null);
   }
 
-  rescheduleMedication(
+  private setTakenAt(medicationId: string, scheduledFor: string, takenAt: string | null): void {
+    const result = this.db
+      .prepare(
+        `UPDATE doses SET taken_at = ? WHERE medication_id = ? AND scheduled_for = ?`
+      )
+      .run(takenAt, medicationId, scheduledFor);
+    if ((result as { changes: number }).changes === 0) {
+      throw new Error(`Dose not found: ${medicationId} at ${scheduledFor}`);
+    }
+  }
+
+  async rescheduleMedication(
     medicationId: string,
     oldTime: string,
     newTime: string,
     fromDate: string
-  ): void {
-    const med = this.listMedications().find((m) => m.id === medicationId);
+  ): Promise<void> {
+    const med = (await this.listMedications()).find((m) => m.id === medicationId);
     if (!med) {
       throw new Error(`Medication not found: ${medicationId}`);
     }
@@ -127,7 +140,7 @@ export class SqliteMedicationRepository implements MedicationRepository {
     );
     const del = this.db.prepare('DELETE FROM doses WHERE medication_id = ? AND scheduled_for = ?');
     for (const d of toMove) del.run(d.medicationId, d.scheduledFor);
-    this.addDoses(
+    await this.addDoses(
       toMove.map((d) => ({
         medicationId,
         scheduledFor: `${d.scheduledFor.slice(0, 10)}T${newTime}:00Z`,
@@ -136,19 +149,8 @@ export class SqliteMedicationRepository implements MedicationRepository {
     );
   }
 
-  private setTakenAt(medicationId: string, scheduledFor: string, takenAt: string | null): void {
-    const result = this.db
-      .prepare(
-        `UPDATE doses SET taken_at = ? WHERE medication_id = ? AND scheduled_for = ?`
-      )
-      .run(takenAt, medicationId, scheduledFor);
-    if ((result as { changes: number }).changes === 0) {
-      throw new Error(`Dose not found: ${medicationId} at ${scheduledFor}`);
-    }
-  }
-
-  getRefillStatuses(today: string): RefillStatus[] {
-    return this.listMedications().map((m) => getRefillStatus(m, today));
+  async getRefillStatuses(today: string): Promise<RefillStatus[]> {
+    return (await this.listMedications()).map((m) => getRefillStatus(m, today));
   }
 }
 

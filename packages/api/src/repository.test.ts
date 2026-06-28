@@ -17,21 +17,22 @@ const SEED_DOSES = [
   { medicationId: 'med-1', scheduledFor: '2026-06-25T21:00:00Z', takenAt: null },
 ];
 
-// Shared suite — exported so SQLite impl can reuse it.
+// Shared suite — exported so any implementation (in-memory, SQLite, Postgres) can
+// be run against it. The repository interface is async, so every call is awaited.
 export function runRepositoryTests(makeRepo: () => MedicationRepository) {
   describe('listMedications', () => {
-    it('returns all seeded medications', () => {
+    it('returns all seeded medications', async () => {
       const repo = makeRepo();
-      const meds = repo.listMedications();
+      const meds = await repo.listMedications();
       expect(meds).toHaveLength(1);
       expect(meds[0].id).toBe('med-1');
     });
   });
 
   describe('addMedication', () => {
-    it('adds a new medication that appears in listMedications', () => {
+    it('adds a new medication that appears in listMedications', async () => {
       const repo = makeRepo();
-      repo.addMedication({
+      await repo.addMedication({
         id: 'med-99',
         name: 'Aspirin',
         pillsAtPickup: 60,
@@ -40,180 +41,181 @@ export function runRepositoryTests(makeRepo: () => MedicationRepository) {
         refillLeadTimeDays: 5,
         schedule: ['09:00'],
       });
-      const meds = repo.listMedications();
+      const meds = await repo.listMedications();
       expect(meds).toHaveLength(2);
       expect(meds.find((m) => m.id === 'med-99')?.name).toBe('Aspirin');
     });
   });
 
   describe('deleteMedication', () => {
-    it('removes the medication from listMedications', () => {
+    it('removes the medication from listMedications', async () => {
       const repo = makeRepo();
-      repo.deleteMedication('med-1');
-      expect(repo.listMedications()).toHaveLength(0);
+      await repo.deleteMedication('med-1');
+      expect(await repo.listMedications()).toHaveLength(0);
     });
 
-    it('removes all of the medication\'s doses', () => {
+    it('removes all of the medication\'s doses', async () => {
       const repo = makeRepo();
-      repo.deleteMedication('med-1');
-      expect(repo.getDosesForDay('2026-06-25')).toHaveLength(0);
+      await repo.deleteMedication('med-1');
+      expect(await repo.getDosesForDay('2026-06-25')).toHaveLength(0);
     });
 
-    it('throws when the medication does not exist', () => {
+    it('throws when the medication does not exist', async () => {
       const repo = makeRepo();
-      expect(() => repo.deleteMedication('med-does-not-exist')).toThrow();
+      await expect(repo.deleteMedication('med-does-not-exist')).rejects.toThrow();
+    });
+  });
+
+  describe('rescheduleMedication', () => {
+    it('moves an untaken dose on/after fromDate to the new time', async () => {
+      const repo = makeRepo();
+      await repo.rescheduleMedication('med-1', '08:00', '10:00', '2026-06-25');
+      const doses = (await repo.getDosesForDay('2026-06-25')).map((d) => d.scheduledFor).sort();
+      expect(doses).toContain('2026-06-25T10:00:00Z');
+      expect(doses).not.toContain('2026-06-25T08:00:00Z');
+    });
+
+    it('updates the medication schedule', async () => {
+      const repo = makeRepo();
+      await repo.rescheduleMedication('med-1', '08:00', '10:00', '2026-06-25');
+      expect((await repo.listMedications())[0].schedule).toEqual(['10:00']);
+    });
+
+    it('leaves a dose that was already taken at the old time untouched', async () => {
+      const repo = makeRepo();
+      await repo.markTaken('med-1', '2026-06-25T08:00:00Z', '2026-06-25T08:05:00Z');
+      await repo.rescheduleMedication('med-1', '08:00', '10:00', '2026-06-25');
+      const doses = await repo.getDosesForDay('2026-06-25');
+      const taken = doses.find((d) => d.scheduledFor === '2026-06-25T08:00:00Z');
+      expect(taken?.takenAt).toBe('2026-06-25T08:05:00Z');
+      expect(doses.find((d) => d.scheduledFor === '2026-06-25T10:00:00Z')).toBeUndefined();
+    });
+
+    it('throws when the medication does not exist', async () => {
+      const repo = makeRepo();
+      await expect(
+        repo.rescheduleMedication('nope', '08:00', '10:00', '2026-06-25')
+      ).rejects.toThrow();
     });
   });
 
   describe('addDoses', () => {
-    it('makes doses visible via getDueDoses', () => {
+    it('makes doses visible via getDueDoses', async () => {
       const repo = makeRepo();
-      repo.addDoses([{ medicationId: 'med-1', scheduledFor: '2026-06-25T10:00:00Z', takenAt: null }]);
-      const due = repo.getDueDoses('2026-06-25T12:00:00Z');
+      await repo.addDoses([{ medicationId: 'med-1', scheduledFor: '2026-06-25T10:00:00Z', takenAt: null }]);
+      const due = await repo.getDueDoses('2026-06-25T12:00:00Z');
       expect(due.some((d) => d.scheduledFor === '2026-06-25T10:00:00Z')).toBe(true);
     });
 
-    it('is idempotent — inserting a duplicate dose is a no-op', () => {
+    it('is idempotent — inserting a duplicate dose is a no-op', async () => {
       const repo = makeRepo();
-      repo.addDoses([{ medicationId: 'med-1', scheduledFor: '2026-06-25T08:00:00Z', takenAt: null }]);
-      const due = repo.getDueDoses('2026-06-25T12:00:00Z');
+      await repo.addDoses([{ medicationId: 'med-1', scheduledFor: '2026-06-25T08:00:00Z', takenAt: null }]);
+      const due = await repo.getDueDoses('2026-06-25T12:00:00Z');
       expect(due.filter((d) => d.scheduledFor === '2026-06-25T08:00:00Z')).toHaveLength(1);
     });
   });
 
   describe('getDueDoses', () => {
-    it('returns pending doses at or before now', () => {
+    it('returns pending doses at or before now', async () => {
       const repo = makeRepo();
-      const due = repo.getDueDoses('2026-06-25T12:00:00Z');
+      const due = await repo.getDueDoses('2026-06-25T12:00:00Z');
       expect(due).toHaveLength(1);
       expect(due[0].scheduledFor).toBe('2026-06-25T08:00:00Z');
     });
 
-    it('excludes future doses', () => {
+    it('excludes future doses', async () => {
       const repo = makeRepo();
-      const due = repo.getDueDoses('2026-06-25T07:00:00Z');
+      const due = await repo.getDueDoses('2026-06-25T07:00:00Z');
       expect(due).toHaveLength(0);
     });
 
-    it('excludes doses already marked taken', () => {
+    it('excludes doses already marked taken', async () => {
       const repo = makeRepo();
-      repo.markTaken('med-1', '2026-06-25T08:00:00Z', '2026-06-25T08:05:00Z');
-      const due = repo.getDueDoses('2026-06-25T12:00:00Z');
+      await repo.markTaken('med-1', '2026-06-25T08:00:00Z', '2026-06-25T08:05:00Z');
+      const due = await repo.getDueDoses('2026-06-25T12:00:00Z');
       expect(due).toHaveLength(0);
     });
   });
 
   describe('markTaken', () => {
-    it('records the takenAt timestamp on the matching dose', () => {
+    it('records the takenAt timestamp on the matching dose', async () => {
       const repo = makeRepo();
-      repo.markTaken('med-1', '2026-06-25T08:00:00Z', '2026-06-25T08:07:00Z');
-      const due = repo.getDueDoses('2026-06-25T12:00:00Z');
+      await repo.markTaken('med-1', '2026-06-25T08:00:00Z', '2026-06-25T08:07:00Z');
+      const due = await repo.getDueDoses('2026-06-25T12:00:00Z');
       expect(due).toHaveLength(0);
     });
 
-    it('throws when the dose does not exist', () => {
+    it('throws when the dose does not exist', async () => {
       const repo = makeRepo();
-      expect(() =>
+      await expect(
         repo.markTaken('med-1', '2026-06-25T99:00:00Z', '2026-06-25T08:07:00Z')
-      ).toThrow();
+      ).rejects.toThrow();
     });
   });
 
   describe('markUntaken', () => {
-    it('clears takenAt so the dose is due again', () => {
+    it('clears takenAt so the dose is due again', async () => {
       const repo = makeRepo();
-      repo.markTaken('med-1', '2026-06-25T08:00:00Z', '2026-06-25T08:07:00Z');
-      expect(repo.getDueDoses('2026-06-25T12:00:00Z')).toHaveLength(0);
+      await repo.markTaken('med-1', '2026-06-25T08:00:00Z', '2026-06-25T08:07:00Z');
+      expect(await repo.getDueDoses('2026-06-25T12:00:00Z')).toHaveLength(0);
 
-      repo.markUntaken('med-1', '2026-06-25T08:00:00Z');
-      const due = repo.getDueDoses('2026-06-25T12:00:00Z');
+      await repo.markUntaken('med-1', '2026-06-25T08:00:00Z');
+      const due = await repo.getDueDoses('2026-06-25T12:00:00Z');
       expect(due).toHaveLength(1);
       expect(due[0].scheduledFor).toBe('2026-06-25T08:00:00Z');
     });
 
-    it('throws when the dose does not exist', () => {
+    it('throws when the dose does not exist', async () => {
       const repo = makeRepo();
-      expect(() => repo.markUntaken('med-1', '2026-06-25T99:00:00Z')).toThrow();
-    });
-  });
-
-  describe('rescheduleMedication', () => {
-    it('moves an untaken dose on/after fromDate to the new time', () => {
-      const repo = makeRepo();
-      repo.rescheduleMedication('med-1', '08:00', '10:00', '2026-06-25');
-      const doses = repo.getDosesForDay('2026-06-25').map((d) => d.scheduledFor).sort();
-      expect(doses).toContain('2026-06-25T10:00:00Z');
-      expect(doses).not.toContain('2026-06-25T08:00:00Z');
-    });
-
-    it('updates the medication schedule', () => {
-      const repo = makeRepo();
-      repo.rescheduleMedication('med-1', '08:00', '10:00', '2026-06-25');
-      expect(repo.listMedications()[0].schedule).toEqual(['10:00']);
-    });
-
-    it('leaves a dose that was already taken at the old time untouched', () => {
-      const repo = makeRepo();
-      repo.markTaken('med-1', '2026-06-25T08:00:00Z', '2026-06-25T08:05:00Z');
-      repo.rescheduleMedication('med-1', '08:00', '10:00', '2026-06-25');
-      const doses = repo.getDosesForDay('2026-06-25');
-      const taken = doses.find((d) => d.scheduledFor === '2026-06-25T08:00:00Z');
-      expect(taken?.takenAt).toBe('2026-06-25T08:05:00Z');
-      // no new untaken dose created at the new time, since today's was already taken
-      expect(doses.find((d) => d.scheduledFor === '2026-06-25T10:00:00Z')).toBeUndefined();
-    });
-
-    it('throws when the medication does not exist', () => {
-      const repo = makeRepo();
-      expect(() => repo.rescheduleMedication('nope', '08:00', '10:00', '2026-06-25')).toThrow();
+      await expect(repo.markUntaken('med-1', '2026-06-25T99:00:00Z')).rejects.toThrow();
     });
   });
 
   describe('getDosesForDay', () => {
-    it('returns both taken and pending doses for the day', () => {
+    it('returns both taken and pending doses for the day', async () => {
       const repo = makeRepo();
-      repo.markTaken('med-1', '2026-06-25T08:00:00Z', '2026-06-25T08:07:00Z');
-      const doses = repo.getDosesForDay('2026-06-25');
+      await repo.markTaken('med-1', '2026-06-25T08:00:00Z', '2026-06-25T08:07:00Z');
+      const doses = await repo.getDosesForDay('2026-06-25');
       expect(doses).toHaveLength(2);
       expect(doses.find((d) => d.scheduledFor === '2026-06-25T08:00:00Z')?.takenAt).not.toBeNull();
     });
 
-    it('excludes doses on other days', () => {
+    it('excludes doses on other days', async () => {
       const repo = makeRepo();
-      expect(repo.getDosesForDay('2026-06-24')).toHaveLength(0);
+      expect(await repo.getDosesForDay('2026-06-24')).toHaveLength(0);
     });
   });
 
   describe('ensureDosesForDay', () => {
-    it('creates a dose per scheduled time for a day that has none yet', () => {
+    it('creates a dose per scheduled time for a day that has none yet', async () => {
       const repo = makeRepo();
       // SEED_MED is scheduled at 08:00; a fresh day has no doses.
-      const doses = repo.ensureDosesForDay('2026-06-27');
+      const doses = await repo.ensureDosesForDay('2026-06-27');
       expect(doses).toHaveLength(1);
       expect(doses[0].scheduledFor).toBe('2026-06-27T08:00:00Z');
       expect(doses[0].takenAt).toBeNull();
     });
 
-    it('is idempotent — running twice does not duplicate doses', () => {
+    it('is idempotent — running twice does not duplicate doses', async () => {
       const repo = makeRepo();
-      repo.ensureDosesForDay('2026-06-27');
-      const doses = repo.ensureDosesForDay('2026-06-27');
+      await repo.ensureDosesForDay('2026-06-27');
+      const doses = await repo.ensureDosesForDay('2026-06-27');
       expect(doses).toHaveLength(1);
     });
 
-    it('preserves the taken state of an existing dose', () => {
+    it('preserves the taken state of an existing dose', async () => {
       const repo = makeRepo();
-      repo.markTaken('med-1', '2026-06-25T08:00:00Z', '2026-06-25T08:07:00Z');
-      const doses = repo.ensureDosesForDay('2026-06-25');
+      await repo.markTaken('med-1', '2026-06-25T08:00:00Z', '2026-06-25T08:07:00Z');
+      const doses = await repo.ensureDosesForDay('2026-06-25');
       const eight = doses.find((d) => d.scheduledFor === '2026-06-25T08:00:00Z');
       expect(eight?.takenAt).toBe('2026-06-25T08:07:00Z');
     });
   });
 
   describe('getRefillStatuses', () => {
-    it('returns a RefillStatus for each medication', () => {
+    it('returns a RefillStatus for each medication', async () => {
       const repo = makeRepo();
-      const statuses = repo.getRefillStatuses('2026-06-25');
+      const statuses = await repo.getRefillStatuses('2026-06-25');
       expect(statuses).toHaveLength(1);
       expect(statuses[0].medicationId).toBe('med-1');
       expect(statuses[0].pillsRemaining).toBe(30);

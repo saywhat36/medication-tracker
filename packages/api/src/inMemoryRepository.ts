@@ -11,15 +11,15 @@ export class InMemoryMedicationRepository implements MedicationRepository {
     this.doses = doses.map((d) => ({ ...d }));
   }
 
-  listMedications(): Medication[] {
+  async listMedications(): Promise<Medication[]> {
     return this.medications.map((m) => ({ ...m }));
   }
 
-  addMedication(med: Medication): void {
+  async addMedication(med: Medication): Promise<void> {
     this.medications.push({ ...med });
   }
 
-  deleteMedication(medicationId: string): void {
+  async deleteMedication(medicationId: string): Promise<void> {
     const index = this.medications.findIndex((m) => m.id === medicationId);
     if (index === -1) {
       throw new Error(`Medication not found: ${medicationId}`);
@@ -28,7 +28,7 @@ export class InMemoryMedicationRepository implements MedicationRepository {
     this.doses = this.doses.filter((d) => d.medicationId !== medicationId);
   }
 
-  addDoses(doses: Dose[]): void {
+  async addDoses(doses: Dose[]): Promise<void> {
     for (const dose of doses) {
       const exists = this.doses.some(
         (d) => d.medicationId === dose.medicationId && d.scheduledFor === dose.scheduledFor
@@ -37,33 +37,33 @@ export class InMemoryMedicationRepository implements MedicationRepository {
     }
   }
 
-  getDueDoses(now: string): Dose[] {
+  async getDueDoses(now: string): Promise<Dose[]> {
     return dosesDueAt(this.doses, now);
   }
 
-  getDosesForDay(date: string): Dose[] {
+  async getDosesForDay(date: string): Promise<Dose[]> {
     return dosesForDay(this.doses, date);
   }
 
-  ensureDosesForDay(date: string): Dose[] {
-    this.addDoses(scheduledDosesForDay(this.medications, date));
+  async ensureDosesForDay(date: string): Promise<Dose[]> {
+    await this.addDoses(scheduledDosesForDay(this.medications, date));
     return dosesForDay(this.doses, date);
   }
 
-  markTaken(medicationId: string, scheduledFor: string, takenAt: string): void {
+  async markTaken(medicationId: string, scheduledFor: string, takenAt: string): Promise<void> {
     this.findDose(medicationId, scheduledFor).takenAt = takenAt;
   }
 
-  markUntaken(medicationId: string, scheduledFor: string): void {
+  async markUntaken(medicationId: string, scheduledFor: string): Promise<void> {
     this.findDose(medicationId, scheduledFor).takenAt = null;
   }
 
-  rescheduleMedication(
+  async rescheduleMedication(
     medicationId: string,
     oldTime: string,
     newTime: string,
     fromDate: string
-  ): void {
+  ): Promise<void> {
     const med = this.medications.find((m) => m.id === medicationId);
     if (!med) {
       throw new Error(`Medication not found: ${medicationId}`);
@@ -87,7 +87,7 @@ export class InMemoryMedicationRepository implements MedicationRepository {
       }
       return true;
     });
-    this.addDoses(moved);
+    await this.addDoses(moved);
   }
 
   private findDose(medicationId: string, scheduledFor: string): Dose {
@@ -100,7 +100,7 @@ export class InMemoryMedicationRepository implements MedicationRepository {
     return dose;
   }
 
-  getRefillStatuses(today: string): RefillStatus[] {
+  async getRefillStatuses(today: string): Promise<RefillStatus[]> {
     return this.medications.map((m) => getRefillStatus(m, today));
   }
 }
