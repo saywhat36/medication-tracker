@@ -1,6 +1,6 @@
 import type { Medication, Dose, RefillStatus } from '@medication-tracker/core';
 
-const BASE = import.meta.env['VITE_API_URL'] ?? '';
+const BASE = import.meta.env.VITE_API_URL ?? '';
 const TOKEN_KEY = 'mt_token';
 
 // An error that carries the HTTP status, so callers can react to 401 (login).
@@ -15,7 +15,7 @@ export class ApiError extends Error {
 // The bearer token comes from localStorage (set after login) so it's never baked
 // into the public bundle. VITE_API_TOKEN is a fallback for local dev convenience.
 function authToken(): string {
-  return localStorage.getItem(TOKEN_KEY) ?? import.meta.env['VITE_API_TOKEN'] ?? '';
+  return localStorage.getItem(TOKEN_KEY) ?? import.meta.env.VITE_API_TOKEN ?? '';
 }
 
 export function setToken(token: string): void {
