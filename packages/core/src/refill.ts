@@ -1,9 +1,10 @@
 import type { Medication, RefillStatus } from './types.js';
 
-// Pills physically left = what you picked up minus the doses you've ticked off
-// since that pickup. (See dosesTakenSincePickup in doses.ts for the count.)
+// Pills physically left = what you picked up, minus doses already taken before
+// the app started tracking (entered at registration), minus doses ticked off
+// since. (See dosesTakenSincePickup in doses.ts for the ticked count.)
 export function pillsRemaining(med: Medication, takenSincePickup: number): number {
-  return Math.max(0, med.pillsAtPickup - takenSincePickup);
+  return Math.max(0, med.pillsAtPickup - (med.priorDosesTaken ?? 0) - takenSincePickup);
 }
 
 // Whole days of supply left (pills remaining ÷ doses per day).

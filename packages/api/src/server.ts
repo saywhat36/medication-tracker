@@ -67,11 +67,12 @@ export function createServer(
         name: string;
         pillsAtPickup: number;
         lastPickupDate: string;
+        priorDosesTaken?: number;
         dosesPerDay: number;
         refillLeadTimeDays: number;
         schedule: string[];
       };
-      const med = { id: randomUUID(), ...body };
+      const med = { id: randomUUID(), priorDosesTaken: 0, ...body };
       await repo.addMedication(med);
       await repo.ensureDosesForDay(today());
       res.status(201).json(med);

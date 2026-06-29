@@ -26,6 +26,13 @@ describe('pillsRemaining', () => {
   it('clamps to zero rather than going negative', () => {
     expect(pillsRemaining(base, 40)).toBe(0);
   });
+
+  it('subtracts doses already taken before tracking (priorDosesTaken)', () => {
+    // picked up 30, already took 10 before the app, 0 ticked → 20 left
+    expect(pillsRemaining({ ...base, priorDosesTaken: 10 }, 0)).toBe(20);
+    // plus 5 ticked since → 15 left
+    expect(pillsRemaining({ ...base, priorDosesTaken: 10 }, 5)).toBe(15);
+  });
 });
 
 describe('daysUntilRefill', () => {

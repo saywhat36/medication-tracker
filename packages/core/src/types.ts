@@ -3,6 +3,7 @@ export interface Medication {
   name: string;
   pillsAtPickup: number;         // pills collected at last prescription pickup
   lastPickupDate: string;        // ISO date of that pickup, e.g. "2026-06-25"
+  priorDosesTaken?: number;      // doses already taken since pickup before app tracking (default 0)
   dosesPerDay: number;           // doses taken each day (must be > 0)
   refillLeadTimeDays: number;    // days before running out to reorder
   schedule: string[];            // times of day, 24h, e.g. ["08:00", "21:00"]

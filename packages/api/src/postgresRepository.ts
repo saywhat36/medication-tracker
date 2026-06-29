@@ -46,9 +46,9 @@ export class PostgresMedicationRepository implements MedicationRepository {
 
   async addMedication(med: Medication): Promise<void> {
     await this.pool.query(
-      `INSERT INTO medications (id, name, pills_at_pickup, last_pickup_date, doses_per_day, refill_lead_time_days, schedule)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [med.id, med.name, med.pillsAtPickup, med.lastPickupDate, med.dosesPerDay, med.refillLeadTimeDays, JSON.stringify(med.schedule)]
+      `INSERT INTO medications (id, name, pills_at_pickup, last_pickup_date, prior_doses_taken, doses_per_day, refill_lead_time_days, schedule)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [med.id, med.name, med.pillsAtPickup, med.lastPickupDate, med.priorDosesTaken ?? 0, med.dosesPerDay, med.refillLeadTimeDays, JSON.stringify(med.schedule)]
     );
   }
 
@@ -168,6 +168,7 @@ function toMedication(row: Record<string, unknown>): Medication {
     name: row['name'] as string,
     pillsAtPickup: Number(row['pills_at_pickup']),
     lastPickupDate: row['last_pickup_date'] as string,
+    priorDosesTaken: Number(row['prior_doses_taken'] ?? 0),
     dosesPerDay: Number(row['doses_per_day']),
     refillLeadTimeDays: Number(row['refill_lead_time_days']),
     schedule: JSON.parse(row['schedule'] as string) as string[],

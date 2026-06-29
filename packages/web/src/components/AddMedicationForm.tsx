@@ -16,6 +16,7 @@ export function AddMedicationForm({ onAdded, onSubmit }: Props) {
   const [name, setName] = useState('');
   const [pillsAtPickup, setPillsAtPickup] = useState('');
   const [lastPickupDate, setLastPickupDate] = useState(today);
+  const [priorDosesTaken, setPriorDosesTaken] = useState('0');
   const [dosesPerDay, setDosesPerDay] = useState('1');
   const [refillLeadTimeDays, setRefillLeadTimeDays] = useState('7');
   const [scheduleTime, setScheduleTime] = useState('09:00');
@@ -29,6 +30,7 @@ export function AddMedicationForm({ onAdded, onSubmit }: Props) {
         name: name.trim(),
         pillsAtPickup: Number(pillsAtPickup),
         lastPickupDate,
+        priorDosesTaken: Number(priorDosesTaken),
         dosesPerDay: Number(dosesPerDay),
         refillLeadTimeDays: Number(refillLeadTimeDays),
         schedule: [scheduleTime],
@@ -38,6 +40,7 @@ export function AddMedicationForm({ onAdded, onSubmit }: Props) {
       setName('');
       setPillsAtPickup('');
       setLastPickupDate(today);
+      setPriorDosesTaken('0');
       setDosesPerDay('1');
       setRefillLeadTimeDays('7');
       setScheduleTime('09:00');
@@ -94,6 +97,19 @@ export function AddMedicationForm({ onAdded, onSubmit }: Props) {
           value={pillsAtPickup}
           onChange={(e) => setPillsAtPickup(e.target.value)}
           placeholder="e.g. 30"
+          className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+        />
+      </label>
+
+      <label className="block space-y-1">
+        <span className="text-xs text-muted-foreground">Pills already taken since pickup</span>
+        <input
+          required
+          type="number"
+          min="0"
+          value={priorDosesTaken}
+          onChange={(e) => setPriorDosesTaken(e.target.value)}
+          placeholder="0"
           className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </label>

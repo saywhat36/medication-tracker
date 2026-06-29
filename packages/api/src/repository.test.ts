@@ -248,6 +248,22 @@ export function runRepositoryTests(
       const statuses = await repo.getRefillStatuses('2026-06-25');
       expect(statuses[0].pillsRemaining).toBe(29);
     });
+
+    it('subtracts priorDosesTaken entered at registration', async () => {
+      const repo = await makeRepo();
+      await repo.addMedication({
+        id: 'med-prior',
+        name: 'Old script',
+        pillsAtPickup: 30,
+        lastPickupDate: '2026-06-25',
+        priorDosesTaken: 10,
+        dosesPerDay: 1,
+        refillLeadTimeDays: 7,
+        schedule: ['09:00'],
+      });
+      const statuses = await repo.getRefillStatuses('2026-06-25');
+      expect(statuses.find((s) => s.medicationId === 'med-prior')?.pillsRemaining).toBe(20);
+    });
   });
 }
 
