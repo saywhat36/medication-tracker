@@ -4,6 +4,7 @@ import {
   dosesForDay,
   scheduledDosesForDay,
   dosesTakenSincePickup,
+  computeReschedule,
   isOverdue,
 } from './doses.js';
 import type { Dose, Medication } from './types.js';
@@ -53,16 +54,23 @@ describe('dosesDueAt', () => {
 
 describe('dosesForDay', () => {
   it('returns both taken and pending doses on the given day', () => {
-    expect(dosesForDay([pending, taken], '2026-06-25')).toEqual([pending, taken]);
+    expect(dosesForDay([pending, taken], '2026-06-25', 'UTC')).toEqual([pending, taken]);
   });
 
   it('excludes doses scheduled on a different day', () => {
     const tomorrow: Dose = { ...pending, scheduledFor: '2026-06-26T08:00:00Z' };
-    expect(dosesForDay([pending, tomorrow], '2026-06-25')).toEqual([pending]);
+    expect(dosesForDay([pending, tomorrow], '2026-06-25', 'UTC')).toEqual([pending]);
   });
 
   it('returns an empty array when no doses fall on the day', () => {
-    expect(dosesForDay([pending], '2026-06-24')).toEqual([]);
+    expect(dosesForDay([pending], '2026-06-24', 'UTC')).toEqual([]);
+  });
+
+  it('uses the local day in the given timezone (near-midnight rollover)', () => {
+    // 23:30 UTC is 00:30 the next day in BST, so it belongs to the 26th in London.
+    const lateNight: Dose = { ...pending, scheduledFor: '2026-06-25T23:30:00Z' };
+    expect(dosesForDay([lateNight], '2026-06-26', 'Europe/London')).toEqual([lateNight]);
+    expect(dosesForDay([lateNight], '2026-06-25', 'Europe/London')).toEqual([]);
   });
 });
 
@@ -88,8 +96,8 @@ describe('scheduledDosesForDay', () => {
     },
   ];
 
-  it('produces one untaken dose per scheduled time per medication', () => {
-    const doses = scheduledDosesForDay(meds, '2026-06-26');
+  it('produces one untaken dose per scheduled time per medication (UTC)', () => {
+    const doses = scheduledDosesForDay(meds, '2026-06-26', 'UTC');
     expect(doses).toEqual([
       { medicationId: 'med-1', scheduledFor: '2026-06-26T08:00:00Z', takenAt: null },
       { medicationId: 'med-1', scheduledFor: '2026-06-26T21:00:00Z', takenAt: null },
@@ -97,8 +105,59 @@ describe('scheduledDosesForDay', () => {
     ]);
   });
 
+  it('converts schedule times from the timezone to UTC instants', () => {
+    const doses = scheduledDosesForDay(meds, '2026-06-26', 'Europe/London');
+    expect(doses.map((d) => d.scheduledFor)).toEqual([
+      '2026-06-26T07:00:00Z',
+      '2026-06-26T20:00:00Z',
+      '2026-06-26T08:00:00Z',
+    ]);
+  });
+
   it('returns an empty array when there are no medications', () => {
-    expect(scheduledDosesForDay([], '2026-06-26')).toEqual([]);
+    expect(scheduledDosesForDay([], '2026-06-26', 'UTC')).toEqual([]);
+  });
+});
+
+describe('computeReschedule', () => {
+  const doses: Dose[] = [
+    { medicationId: 'med-1', scheduledFor: '2026-06-26T08:00:00Z', takenAt: null },
+    { medicationId: 'med-1', scheduledFor: '2026-06-27T08:00:00Z', takenAt: null },
+    { medicationId: 'med-1', scheduledFor: '2026-06-25T08:00:00Z', takenAt: '2026-06-25T08:05:00Z' },
+  ];
+
+  it('moves untaken doses on/after fromDate to the new time (UTC)', () => {
+    const { toRemove, toAdd } = computeReschedule(doses, 'med-1', '08:00', '10:00', '2026-06-26', 'UTC');
+    expect(toRemove.map((d) => d.scheduledFor)).toEqual([
+      '2026-06-26T08:00:00Z',
+      '2026-06-27T08:00:00Z',
+    ]);
+    expect(toAdd.map((d) => d.scheduledFor)).toEqual([
+      '2026-06-26T10:00:00Z',
+      '2026-06-27T10:00:00Z',
+    ]);
+  });
+
+  it('leaves taken history and earlier doses untouched', () => {
+    const { toRemove } = computeReschedule(doses, 'med-1', '08:00', '10:00', '2026-06-27', 'UTC');
+    expect(toRemove.map((d) => d.scheduledFor)).toEqual(['2026-06-27T08:00:00Z']);
+  });
+
+  it('matches and produces times in the given timezone', () => {
+    // 07:00Z is 08:00 BST; rescheduling local 08:00 -> 09:00 yields 08:00Z.
+    const bstDoses: Dose[] = [
+      { medicationId: 'med-1', scheduledFor: '2026-06-26T07:00:00Z', takenAt: null },
+    ];
+    const { toRemove, toAdd } = computeReschedule(
+      bstDoses,
+      'med-1',
+      '08:00',
+      '09:00',
+      '2026-06-26',
+      'Europe/London'
+    );
+    expect(toRemove).toHaveLength(1);
+    expect(toAdd[0].scheduledFor).toBe('2026-06-26T08:00:00Z');
   });
 });
 

@@ -257,3 +257,15 @@ describe('InMemoryMedicationRepository', () => {
     () => new InMemoryMedicationRepository([SEED_MED], SEED_DOSES)
   );
 });
+
+// Confirms the timezone is threaded through generation + filtering.
+describe('InMemoryMedicationRepository with a timezone', () => {
+  it('generates dose instants from schedule times interpreted in the timezone', async () => {
+    const repo = new InMemoryMedicationRepository([SEED_MED], [], 'Europe/London');
+    // SEED_MED is scheduled 08:00; in BST that is 07:00 UTC.
+    const doses = await repo.ensureDosesForDay('2026-06-27');
+    expect(doses).toHaveLength(1);
+    expect(doses[0].scheduledFor).toBe('2026-06-27T07:00:00Z');
+    expect(await repo.getDosesForDay('2026-06-27')).toHaveLength(1);
+  });
+});

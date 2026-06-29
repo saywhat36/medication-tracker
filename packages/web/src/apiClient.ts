@@ -22,12 +22,9 @@ export const apiClient = {
     fetch(`${BASE}/medications`, { headers: headers() }).then((r) => json<Medication[]>(r)),
 
   // All of today's doses (taken and pending) so taken ones stay visible to un-tick.
-  getTodaysDoses: () => {
-    const today = new Date().toISOString().slice(0, 10);
-    return fetch(`${BASE}/doses/today?date=${today}`, { headers: headers() }).then((r) =>
-      json<Dose[]>(r)
-    );
-  },
+  // The server resolves "today" in the configured timezone.
+  getTodaysDoses: () =>
+    fetch(`${BASE}/doses/today`, { headers: headers() }).then((r) => json<Dose[]>(r)),
 
   markTaken: (medicationId: string, scheduledFor: string) =>
     fetch(`${BASE}/doses/taken`, {

@@ -1,3 +1,4 @@
+import { dateInZone } from '@medication-tracker/core';
 import { createRepository } from '@medication-tracker/api';
 import { ConsoleNotifier } from './notifier.js';
 import { TelegramNotifier } from './telegramNotifier.js';
@@ -13,10 +14,11 @@ async function main(): Promise<void> {
       ? TelegramNotifier.fromEnv()
       : new ConsoleNotifier();
 
+  const timeZone = process.env['APP_TIMEZONE'] ?? 'UTC';
   const now = new Date().toISOString();
-  console.log(`[sweep:once] running at ${now}, notifier: ${notifier.constructor.name}`);
-  await repo.ensureDosesForDay(now.slice(0, 10));
-  await runSweep(repo, notifier, now);
+  console.log(`[sweep:once] running at ${now}, tz: ${timeZone}, notifier: ${notifier.constructor.name}`);
+  await repo.ensureDosesForDay(dateInZone(now, timeZone));
+  await runSweep(repo, notifier, now, timeZone);
   console.log('[sweep:once] done');
 }
 

@@ -2,6 +2,16 @@ import { useState } from 'react';
 import type { Dose, Medication } from '@medication-tracker/core';
 import { api } from '@/api';
 
+// A dose's scheduledFor is a true UTC instant; show/edit it in the browser's
+// local time (HH:MM) so it matches the timezone the times were entered in.
+function localHHMM(iso: string): string {
+  return new Date(iso).toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  });
+}
+
 interface Props {
   doses: Dose[];
   medications: Medication[];
@@ -37,11 +47,11 @@ export function DoseList({ doses, medications, onTaken, onUntaken, onRescheduled
 
   function startEdit(dose: Dose) {
     setEditing(dose.scheduledFor);
-    setDraftTime(dose.scheduledFor.slice(11, 16));
+    setDraftTime(localHHMM(dose.scheduledFor));
   }
 
   async function saveEdit(dose: Dose) {
-    const oldTime = dose.scheduledFor.slice(11, 16);
+    const oldTime = localHHMM(dose.scheduledFor);
     if (draftTime === oldTime) {
       setEditing(null);
       return;
@@ -71,7 +81,7 @@ export function DoseList({ doses, medications, onTaken, onUntaken, onRescheduled
           const isBusy = pending.has(dose.scheduledFor);
           const isTaken = dose.takenAt !== null;
           const isUpcoming = !isTaken && dose.scheduledFor > now;
-          const time = dose.scheduledFor.slice(11, 16);
+          const time = localHHMM(dose.scheduledFor);
           const isEditing = editing === dose.scheduledFor;
 
           return (

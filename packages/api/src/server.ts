@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import express from 'express';
-import { isOverdue } from '@medication-tracker/core';
+import { isOverdue, dateInZone } from '@medication-tracker/core';
 import type { MedicationRepository } from './repository.js';
 import { createAuthMiddleware } from './auth.js';
 
@@ -16,8 +16,10 @@ function asyncHandler(fn: AsyncHandler): express.RequestHandler {
 export function createServer(
   repo: MedicationRepository,
   now: () => string = () => new Date().toISOString(),
-  apiToken?: string
+  apiToken?: string,
+  timeZone = 'UTC'
 ): express.Application {
+  const today = () => dateInZone(now(), timeZone);
   const app = express();
   app.use(express.json());
 
@@ -49,7 +51,7 @@ export function createServer(
       };
       const med = { id: randomUUID(), ...body };
       await repo.addMedication(med);
-      await repo.ensureDosesForDay(now().slice(0, 10));
+      await repo.ensureDosesForDay(today());
       res.status(201).json(med);
     })
   );
@@ -59,7 +61,7 @@ export function createServer(
     asyncHandler(async (req, res) => {
       const { id } = req.params;
       const { oldTime, newTime } = req.body as { oldTime: string; newTime: string };
-      const fromDate = now().slice(0, 10);
+      const fromDate = today();
       try {
         await repo.rescheduleMedication(id, oldTime, newTime, fromDate);
         res.json({ id, oldTime, newTime });
@@ -93,7 +95,7 @@ export function createServer(
   app.get(
     '/doses/today',
     asyncHandler(async (req, res) => {
-      const date = (req.query['date'] as string | undefined) ?? now().slice(0, 10);
+      const date = (req.query['date'] as string | undefined) ?? today();
       // ensure (not just get) so each medication's scheduled doses exist for the
       // day — this is what makes doses appear every day, not only on the add day.
       res.json(await repo.ensureDosesForDay(date));
@@ -136,8 +138,7 @@ export function createServer(
   app.get(
     '/refill-status',
     asyncHandler(async (_req, res) => {
-      const today = now().slice(0, 10);
-      res.json(await repo.getRefillStatuses(today));
+      res.json(await repo.getRefillStatuses(today()));
     })
   );
 

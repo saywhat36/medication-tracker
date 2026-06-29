@@ -1,4 +1,5 @@
 import cron from 'node-cron';
+import { dateInZone } from '@medication-tracker/core';
 import { createRepository } from '@medication-tracker/api';
 import { ConsoleNotifier } from './notifier.js';
 import { TelegramNotifier } from './telegramNotifier.js';
@@ -7,6 +8,7 @@ import { runSweep } from './sweep.js';
 async function main(): Promise<void> {
   // Same backend selection as the API: Postgres if DATABASE_URL is set, else SQLite.
   const repo = await createRepository();
+  const timeZone = process.env['APP_TIMEZONE'] ?? 'UTC';
 
   const notifier =
     process.env['TELEGRAM_BOT_TOKEN'] && process.env['TELEGRAM_CHAT_ID']
@@ -21,8 +23,8 @@ async function main(): Promise<void> {
     try {
       // Make sure today's doses exist before checking for overdue ones, so
       // reminders fire even on days the dashboard was never opened.
-      await repo.ensureDosesForDay(now.slice(0, 10));
-      await runSweep(repo, notifier, now);
+      await repo.ensureDosesForDay(dateInZone(now, timeZone));
+      await runSweep(repo, notifier, now, timeZone);
     } catch (err) {
       console.error('[sweep] error:', err);
     }

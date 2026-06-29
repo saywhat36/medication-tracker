@@ -12,5 +12,7 @@ export {
   dosesForDay,
   scheduledDosesForDay,
   dosesTakenSincePickup,
+  computeReschedule,
   isOverdue,
 } from './doses.js';
+export { zonedTimeToUtc, formatInZone, dateInZone } from './time.js';
