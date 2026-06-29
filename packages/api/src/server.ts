@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import express from 'express';
+import cors from 'cors';
 import { isOverdue, dateInZone } from '@medication-tracker/core';
 import type { MedicationRepository } from './repository.js';
-import { createAuthMiddleware } from './auth.js';
+import { createAuthMiddleware, safeEqual } from './auth.js';
 
 // Wrap an async handler so a rejected promise is forwarded to Express's error
 // middleware (a 500) instead of leaving the request hanging.
@@ -13,19 +14,40 @@ function asyncHandler(fn: AsyncHandler): express.RequestHandler {
   };
 }
 
+export interface ServerOptions {
+  apiToken?: string; // bearer token required on data routes (auth off if unset)
+  timeZone?: string; // zone for resolving "today" (default UTC)
+  appPassword?: string; // password the /login endpoint checks
+  corsOrigin?: string; // allowed browser origin (any if unset)
+}
+
 export function createServer(
   repo: MedicationRepository,
   now: () => string = () => new Date().toISOString(),
-  apiToken?: string,
-  timeZone = 'UTC'
+  options: ServerOptions = {}
 ): express.Application {
+  const { apiToken, timeZone = 'UTC', appPassword, corsOrigin } = options;
   const today = () => dateInZone(now(), timeZone);
   const app = express();
+  // Allow the browser to call the API cross-origin (e.g. the Pages site). Lock to
+  // corsOrigin when set, otherwise reflect any origin (access still needs the token).
+  app.use(cors({ origin: corsOrigin ?? true, allowedHeaders: ['Content-Type', 'Authorization'] }));
   app.use(express.json());
 
   // Public, unauthenticated — used by the container healthcheck.
   app.get('/health', (_req, res) => {
     res.json({ ok: true });
+  });
+
+  // Public — exchange the app password for the bearer token. The token is never
+  // shipped in the web bundle; the browser only gets it after a correct password.
+  app.post('/login', (req, res) => {
+    const { password } = req.body as { password?: string };
+    if (appPassword && apiToken && typeof password === 'string' && safeEqual(password, appPassword)) {
+      res.json({ token: apiToken });
+      return;
+    }
+    res.status(401).json({ error: 'Invalid password' });
   });
 
   // Everything below requires the bearer token (unless none is configured).

@@ -12,7 +12,11 @@ services:
     envVars:
       - key: APP_TIMEZONE
         value: Europe/London
+      - key: WEB_ORIGIN
+        value: https://saywhat36.github.io # the Pages site origin (for CORS)
       - key: DATABASE_URL
         sync: false # your Neon connection string
       - key: API_TOKEN
         sync: false # a long random secret (openssl rand -hex 32)
+      - key: APP_PASSWORD
+        sync: false # the password you'll type into the web login

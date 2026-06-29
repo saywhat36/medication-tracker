@@ -39,6 +39,7 @@ export const mockRefillStatuses: RefillStatus[] = [
 ];
 
 export const mockClient = {
+  login: (_password: string) => Promise.resolve(true),
   getMedications: () => Promise.resolve(mockMedications),
   getTodaysDoses: () => Promise.resolve(mockTodaysDoses),
   markTaken: (_medicationId: string, scheduledFor: string) => {

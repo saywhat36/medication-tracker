@@ -36,9 +36,10 @@ describe('GET /medications', () => {
 
 describe('auth (when API_TOKEN is configured)', () => {
   const TOKEN = 'secret-token';
+  const PASSWORD = 'hunter2';
   function makeSecureApp() {
     const repo = new InMemoryMedicationRepository([MED], [OVERDUE_DOSE, FUTURE_DOSE]);
-    return createServer(repo, () => FIXED_NOW, TOKEN);
+    return createServer(repo, () => FIXED_NOW, { apiToken: TOKEN, appPassword: PASSWORD });
   }
 
   it('rejects a request with no token (401)', async () => {
@@ -64,6 +65,25 @@ describe('auth (when API_TOKEN is configured)', () => {
     const res = await request(makeSecureApp()).get('/health');
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ ok: true });
+  });
+
+  it('POST /login returns the token for the correct password', async () => {
+    const res = await request(makeSecureApp()).post('/login').send({ password: PASSWORD });
+    expect(res.status).toBe(200);
+    expect(res.body.token).toBe(TOKEN);
+  });
+
+  it('POST /login rejects a wrong password (401)', async () => {
+    const res = await request(makeSecureApp()).post('/login').send({ password: 'nope' });
+    expect(res.status).toBe(401);
+    expect(res.body.token).toBeUndefined();
+  });
+
+  it('sends CORS headers so a browser can call the API', async () => {
+    const res = await request(makeSecureApp())
+      .get('/health')
+      .set('Origin', 'https://example.github.io');
+    expect(res.headers['access-control-allow-origin']).toBeDefined();
   });
 });
 

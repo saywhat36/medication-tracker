@@ -7,9 +7,13 @@ async function main(): Promise<void> {
   if (!apiToken) {
     console.warn('[api] API_TOKEN not set — auth disabled (all requests allowed)');
   }
-  const timeZone = process.env['APP_TIMEZONE'] ?? 'UTC';
   const port = Number(process.env['PORT'] ?? 3000);
-  createServer(repo, undefined, apiToken, timeZone).listen(port, () => {
+  createServer(repo, undefined, {
+    apiToken,
+    timeZone: process.env['APP_TIMEZONE'] ?? 'UTC',
+    appPassword: process.env['APP_PASSWORD'],
+    corsOrigin: process.env['WEB_ORIGIN'],
+  }).listen(port, () => {
     console.log(`[api] listening on http://localhost:${port}`);
   });
 }
