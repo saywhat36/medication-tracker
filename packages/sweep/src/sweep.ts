@@ -6,32 +6,64 @@ function doseKey(medicationId: string, scheduledFor: string): string {
   return `${medicationId}:${scheduledFor}`;
 }
 
+// One refill reminder per medication per pickup cycle. The lastPickupDate in the
+// key means a new prescription (new pickup date) earns a fresh reminder.
+function refillKey(medicationId: string, lastPickupDate: string): string {
+  return `refill:${medicationId}:${lastPickupDate}`;
+}
+
 // "2026-06-28T13:00:00Z" -> "13:00" (shown as the time that was entered).
 function formatTime(scheduledFor: string): string {
   return scheduledFor.slice(11, 16);
 }
 
-// Notify once for each overdue, untaken dose. Idempotency is backed by the
-// repository's notification log, so this is safe to run as repeated one-shot
-// processes (e.g. a GitHub Actions cron) without re-notifying the same dose.
+// "2026-07-25" -> "25 Jul"
+function formatDate(isoDate: string): string {
+  return new Date(`${isoDate}T00:00:00Z`).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
+}
+
+// Sends two kinds of reminder, each at most once thanks to the repository's
+// notification log (so this is safe to run as a repeated cron):
+//   1. an overdue, untaken dose
+//   2. a medication that has reached its reorder point (within the lead time)
 export async function runSweep(
   repo: MedicationRepository,
   notifier: Notifier,
   now: string
 ): Promise<void> {
   const notified = new Set(await repo.getNotifiedDoseKeys());
+  const meds = await repo.listMedications();
+  const medById = new Map(meds.map((m) => [m.id, m]));
+
+  // 1) Overdue doses
   const dueDoses = await repo.getDueDoses(now);
-  const toNotify = dueDoses.filter(
-    (d) => isOverdue(d, now) && !notified.has(doseKey(d.medicationId, d.scheduledFor))
-  );
-  if (toNotify.length === 0) return;
-
-  // Look up names so messages read "Metformin" rather than a raw id.
-  const nameById = new Map((await repo.listMedications()).map((m) => [m.id, m.name]));
-
-  for (const dose of toNotify) {
-    const name = nameById.get(dose.medicationId) ?? dose.medicationId;
+  for (const dose of dueDoses) {
+    if (!isOverdue(dose, now)) continue;
+    const key = doseKey(dose.medicationId, dose.scheduledFor);
+    if (notified.has(key)) continue;
+    const name = medById.get(dose.medicationId)?.name ?? dose.medicationId;
     await notifier.send(`Overdue: ${name} was due at ${formatTime(dose.scheduledFor)}`);
-    await repo.recordDoseNotified(doseKey(dose.medicationId, dose.scheduledFor));
+    await repo.recordDoseNotified(key);
+    notified.add(key);
+  }
+
+  // 2) Refills due — daysUntilRefill <= 0 means supply has dropped to within the
+  // medication's lead time of running out.
+  const statuses = await repo.getRefillStatuses(now.slice(0, 10));
+  for (const status of statuses) {
+    if (status.daysUntilRefill > 0) continue;
+    const med = medById.get(status.medicationId);
+    if (!med) continue;
+    const key = refillKey(med.id, med.lastPickupDate);
+    if (notified.has(key)) continue;
+    await notifier.send(
+      `Reorder ${med.name} — about ${status.pillsRemaining} left, runs out ${formatDate(status.runOutDate)}`
+    );
+    await repo.recordDoseNotified(key);
+    notified.add(key);
   }
 }
