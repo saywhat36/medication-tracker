@@ -4,6 +4,7 @@ import { api } from '@/api';
 import { AddMedicationForm } from '@/components/AddMedicationForm';
 import { DoseList } from '@/components/DoseList';
 import { MedicationList } from '@/components/MedicationList';
+import { PillJar } from '@/components/PillJar';
 import { RefillList } from '@/components/RefillList';
 
 export default function App() {
@@ -24,18 +25,31 @@ export default function App() {
       .finally(() => setLoading(false));
   }, []);
 
-  function handleTaken(scheduledFor: string) {
+  // Adjust a medication's remaining pills locally so the jar pops/refills instantly.
+  function adjustPills(medicationId: string, delta: number) {
+    setRefillStatuses((prev) =>
+      prev.map((s) =>
+        s.medicationId === medicationId
+          ? { ...s, pillsRemaining: Math.max(0, s.pillsRemaining + delta) }
+          : s
+      )
+    );
+  }
+
+  function handleTaken(medicationId: string, scheduledFor: string) {
     setDueDoses((prev) =>
       prev.map((d) =>
         d.scheduledFor === scheduledFor ? { ...d, takenAt: new Date().toISOString() } : d
       )
     );
+    adjustPills(medicationId, -1);
   }
 
-  function handleUntaken(scheduledFor: string) {
+  function handleUntaken(medicationId: string, scheduledFor: string) {
     setDueDoses((prev) =>
       prev.map((d) => (d.scheduledFor === scheduledFor ? { ...d, takenAt: null } : d))
     );
+    adjustPills(medicationId, +1);
   }
 
   function handleMedicationAdded(med: Medication) {
@@ -105,6 +119,23 @@ export default function App() {
           onRescheduled={handleRescheduled}
         />
       </section>
+
+      {medications.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+            Supply
+          </h2>
+          <div className="flex flex-wrap gap-4">
+            {medications.map((m) => (
+              <PillJar
+                key={m.id}
+                name={m.name}
+                count={refillStatuses.find((s) => s.medicationId === m.id)?.pillsRemaining ?? 0}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
