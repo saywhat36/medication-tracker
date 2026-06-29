@@ -16,6 +16,7 @@ const SCHEMA = `
     name                 TEXT NOT NULL,
     pills_at_pickup      REAL NOT NULL,
     last_pickup_date     TEXT NOT NULL,
+    prior_doses_taken    INTEGER NOT NULL DEFAULT 0,
     doses_per_day        REAL NOT NULL,
     refill_lead_time_days INTEGER NOT NULL,
     schedule             TEXT NOT NULL
@@ -49,10 +50,10 @@ export class SqliteMedicationRepository implements MedicationRepository {
   private insertMedication(med: Medication): void {
     this.db
       .prepare(
-        `INSERT INTO medications (id, name, pills_at_pickup, last_pickup_date, doses_per_day, refill_lead_time_days, schedule)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO medications (id, name, pills_at_pickup, last_pickup_date, prior_doses_taken, doses_per_day, refill_lead_time_days, schedule)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(med.id, med.name, med.pillsAtPickup, med.lastPickupDate, med.dosesPerDay, med.refillLeadTimeDays, JSON.stringify(med.schedule));
+      .run(med.id, med.name, med.pillsAtPickup, med.lastPickupDate, med.priorDosesTaken ?? 0, med.dosesPerDay, med.refillLeadTimeDays, JSON.stringify(med.schedule));
   }
 
   private insertDose(dose: Dose): void {
@@ -188,6 +189,7 @@ function toMedication(row: Record<string, unknown>): Medication {
     name: row['name'] as string,
     pillsAtPickup: row['pills_at_pickup'] as number,
     lastPickupDate: row['last_pickup_date'] as string,
+    priorDosesTaken: (row['prior_doses_taken'] as number | undefined) ?? 0,
     dosesPerDay: row['doses_per_day'] as number,
     refillLeadTimeDays: row['refill_lead_time_days'] as number,
     schedule: JSON.parse(row['schedule'] as string) as string[],
