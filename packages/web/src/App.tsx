@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
 import { api } from '@/api';
+import { ApiError } from '@/apiClient';
 import { AddMedicationForm } from '@/components/AddMedicationForm';
 import { DoseList } from '@/components/DoseList';
+import { LoginForm } from '@/components/LoginForm';
 import { MedicationList } from '@/components/MedicationList';
 import { PillJar } from '@/components/PillJar';
 import { RefillList } from '@/components/RefillList';
@@ -13,17 +15,31 @@ export default function App() {
   const [refillStatuses, setRefillStatuses] = useState<RefillStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [needsLogin, setNeedsLogin] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
     Promise.all([api.getMedications(), api.getTodaysDoses(), api.getRefillStatuses()])
       .then(([meds, doses, statuses]) => {
         setMedications(meds);
         setDueDoses(doses);
         setRefillStatuses(statuses);
+        setNeedsLogin(false);
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load'))
+      .catch((err: unknown) => {
+        if (err instanceof ApiError && err.status === 401) {
+          setNeedsLogin(true);
+        } else {
+          setError(err instanceof Error ? err.message : 'Failed to load');
+        }
+      })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   // Adjust a medication's remaining pills locally so the jar pops/refills instantly.
   function adjustPills(medicationId: string, delta: number) {
@@ -73,6 +89,10 @@ export default function App() {
       setDueDoses(doses);
       setRefillStatuses(statuses);
     });
+  }
+
+  if (needsLogin) {
+    return <LoginForm onSuccess={load} />;
   }
 
   if (loading) {
