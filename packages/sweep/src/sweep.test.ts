@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { runSweep } from './sweep.js';
 import type { Notifier } from './notifier.js';
 import type { MedicationRepository } from '@medication-tracker/api';
-import type { Dose, Medication } from '@medication-tracker/core';
+import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
 
 const NOW = '2026-06-25T12:00:00Z'; // 4h after OVERDUE, before FUTURE
 
@@ -26,7 +26,7 @@ const TAKEN_DOSE: Dose = {
 
 // Fake repo with mutable doses and a real (in-memory) notification log, so the
 // idempotency behaviour can be exercised across multiple runSweep calls.
-function fakeRepo(initial: Dose[], meds: Medication[] = []) {
+function fakeRepo(initial: Dose[], meds: Medication[] = [], statuses: RefillStatus[] = []) {
   let doses = initial;
   const notified = new Set<string>();
   const repo = {
@@ -40,9 +40,29 @@ function fakeRepo(initial: Dose[], meds: Medication[] = []) {
     markTaken: async () => {
       throw new Error('not implemented');
     },
-    getRefillStatuses: async () => [],
+    getRefillStatuses: async () => statuses,
   } as unknown as MedicationRepository;
   return { repo, setDoses: (d: Dose[]) => { doses = d; } };
+}
+
+const MED: Medication = {
+  id: 'med-1',
+  name: 'Metformin',
+  pillsAtPickup: 30,
+  lastPickupDate: '2026-06-25',
+  dosesPerDay: 1,
+  refillLeadTimeDays: 7,
+  schedule: ['08:00'],
+};
+
+function refillStatus(daysUntilRefill: number): RefillStatus {
+  return {
+    medicationId: 'med-1',
+    pillsRemaining: 5,
+    daysUntilRefill,
+    runOutDate: '2026-07-02',
+    refillDate: '2026-06-25',
+  };
 }
 
 function fakeNotifier(): Notifier & { messages: string[] } {
@@ -117,5 +137,29 @@ describe('runSweep', () => {
     const { repo } = fakeRepo([OVERDUE_DOSE]);
     await runSweep(repo, notifier, NOW);
     expect(await repo.getNotifiedDoseKeys()).toContain('med-1:2026-06-25T08:00:00Z');
+  });
+
+  it('sends a refill reminder when a medication reaches its reorder point', async () => {
+    const notifier = fakeNotifier();
+    const { repo } = fakeRepo([], [MED], [refillStatus(0)]);
+    await runSweep(repo, notifier, NOW);
+    expect(notifier.messages).toHaveLength(1);
+    expect(notifier.messages[0]).toContain('Reorder Metformin');
+  });
+
+  it('does not send a refill reminder before the reorder point', async () => {
+    const notifier = fakeNotifier();
+    const { repo } = fakeRepo([], [MED], [refillStatus(5)]);
+    await runSweep(repo, notifier, NOW);
+    expect(notifier.messages).toHaveLength(0);
+  });
+
+  it('does not re-send the refill reminder for the same pickup cycle', async () => {
+    const notifier = fakeNotifier();
+    const { repo } = fakeRepo([], [MED], [refillStatus(-2)]);
+    await runSweep(repo, notifier, NOW);
+    await runSweep(repo, notifier, NOW);
+    expect(notifier.messages).toHaveLength(1);
+    expect(await repo.getNotifiedDoseKeys()).toContain('refill:med-1:2026-06-25');
   });
 });
