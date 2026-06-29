@@ -64,9 +64,14 @@ export const mockClient = {
   rescheduleMedication: (id: string, oldTime: string, newTime: string) => {
     const med = mockMedications.find((m) => m.id === id);
     if (med) med.schedule = med.schedule.map((t) => (t === oldTime ? newTime : t));
+    const localHHMM = (iso: string) =>
+      new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
     for (const dose of mockTodaysDoses) {
-      if (dose.medicationId === id && dose.takenAt === null && dose.scheduledFor.slice(11, 16) === oldTime) {
-        dose.scheduledFor = `${dose.scheduledFor.slice(0, 10)}T${newTime}:00Z`;
+      if (dose.medicationId === id && dose.takenAt === null && localHHMM(dose.scheduledFor) === oldTime) {
+        const [h, m] = newTime.split(':').map(Number);
+        const d = new Date(dose.scheduledFor);
+        d.setHours(h, m, 0, 0);
+        dose.scheduledFor = d.toISOString();
       }
     }
     return Promise.resolve();

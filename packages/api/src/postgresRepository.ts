@@ -6,6 +6,7 @@ import {
   dosesForDay,
   scheduledDosesForDay,
   dosesTakenSincePickup,
+  computeReschedule,
 } from '@medication-tracker/core';
 import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
 import type { MedicationRepository } from './repository.js';
@@ -21,9 +22,11 @@ export function createPgPool(connectionString: string): Pool {
 
 export class PostgresMedicationRepository implements MedicationRepository {
   private pool: Pool;
+  private timeZone: string;
 
-  constructor(pool: Pool) {
+  constructor(pool: Pool, timeZone = 'UTC') {
     this.pool = pool;
+    this.timeZone = timeZone;
   }
 
   // Convenience for seeding (tests / first-run).
@@ -74,11 +77,11 @@ export class PostgresMedicationRepository implements MedicationRepository {
 
   async getDosesForDay(date: string): Promise<Dose[]> {
     const { rows } = await this.pool.query('SELECT * FROM doses');
-    return dosesForDay((rows as Record<string, unknown>[]).map(toDose), date);
+    return dosesForDay((rows as Record<string, unknown>[]).map(toDose), date, this.timeZone);
   }
 
   async ensureDosesForDay(date: string): Promise<Dose[]> {
-    await this.addDoses(scheduledDosesForDay(await this.listMedications(), date));
+    await this.addDoses(scheduledDosesForDay(await this.listMedications(), date, this.timeZone));
     return this.getDosesForDay(date);
   }
 
@@ -121,28 +124,22 @@ export class PostgresMedicationRepository implements MedicationRepository {
     ]);
 
     const { rows } = await this.pool.query('SELECT * FROM doses');
-    const toMove = (rows as Record<string, unknown>[])
-      .map(toDose)
-      .filter(
-        (d) =>
-          d.medicationId === medicationId &&
-          d.takenAt === null &&
-          d.scheduledFor.slice(0, 10) >= fromDate &&
-          d.scheduledFor.slice(11, 16) === oldTime
-      );
-    for (const d of toMove) {
+    const allDoses = (rows as Record<string, unknown>[]).map(toDose);
+    const { toRemove, toAdd } = computeReschedule(
+      allDoses,
+      medicationId,
+      oldTime,
+      newTime,
+      fromDate,
+      this.timeZone
+    );
+    for (const d of toRemove) {
       await this.pool.query('DELETE FROM doses WHERE medication_id = $1 AND scheduled_for = $2', [
         d.medicationId,
         d.scheduledFor,
       ]);
     }
-    await this.addDoses(
-      toMove.map((d) => ({
-        medicationId,
-        scheduledFor: `${d.scheduledFor.slice(0, 10)}T${newTime}:00Z`,
-        takenAt: null,
-      }))
-    );
+    await this.addDoses(toAdd);
   }
 
   async getRefillStatuses(today: string): Promise<RefillStatus[]> {

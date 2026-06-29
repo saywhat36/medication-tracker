@@ -3,6 +3,7 @@ import {
   dosesForDay,
   scheduledDosesForDay,
   dosesTakenSincePickup,
+  computeReschedule,
   getRefillStatus,
 } from '@medication-tracker/core';
 import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
@@ -12,10 +13,12 @@ export class InMemoryMedicationRepository implements MedicationRepository {
   private medications: Medication[];
   private doses: Dose[];
   private notifiedDoseKeys = new Set<string>();
+  private timeZone: string;
 
-  constructor(medications: Medication[], doses: Dose[]) {
+  constructor(medications: Medication[], doses: Dose[], timeZone = 'UTC') {
     this.medications = medications.map((m) => ({ ...m }));
     this.doses = doses.map((d) => ({ ...d }));
+    this.timeZone = timeZone;
   }
 
   async listMedications(): Promise<Medication[]> {
@@ -49,12 +52,12 @@ export class InMemoryMedicationRepository implements MedicationRepository {
   }
 
   async getDosesForDay(date: string): Promise<Dose[]> {
-    return dosesForDay(this.doses, date);
+    return dosesForDay(this.doses, date, this.timeZone);
   }
 
   async ensureDosesForDay(date: string): Promise<Dose[]> {
-    await this.addDoses(scheduledDosesForDay(this.medications, date));
-    return dosesForDay(this.doses, date);
+    await this.addDoses(scheduledDosesForDay(this.medications, date, this.timeZone));
+    return dosesForDay(this.doses, date, this.timeZone);
   }
 
   async markTaken(medicationId: string, scheduledFor: string, takenAt: string): Promise<void> {
@@ -77,24 +80,17 @@ export class InMemoryMedicationRepository implements MedicationRepository {
     }
     med.schedule = med.schedule.map((t) => (t === oldTime ? newTime : t));
 
-    const moved: Dose[] = [];
-    this.doses = this.doses.filter((d) => {
-      const shouldMove =
-        d.medicationId === medicationId &&
-        d.takenAt === null &&
-        d.scheduledFor.slice(0, 10) >= fromDate &&
-        d.scheduledFor.slice(11, 16) === oldTime;
-      if (shouldMove) {
-        moved.push({
-          medicationId,
-          scheduledFor: `${d.scheduledFor.slice(0, 10)}T${newTime}:00Z`,
-          takenAt: null,
-        });
-        return false;
-      }
-      return true;
-    });
-    await this.addDoses(moved);
+    const { toRemove, toAdd } = computeReschedule(
+      this.doses,
+      medicationId,
+      oldTime,
+      newTime,
+      fromDate,
+      this.timeZone
+    );
+    const removeKeys = new Set(toRemove.map((d) => `${d.medicationId}:${d.scheduledFor}`));
+    this.doses = this.doses.filter((d) => !removeKeys.has(`${d.medicationId}:${d.scheduledFor}`));
+    await this.addDoses(toAdd);
   }
 
   private findDose(medicationId: string, scheduledFor: string): Dose {

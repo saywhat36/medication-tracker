@@ -1,4 +1,4 @@
-import { isOverdue } from '@medication-tracker/core';
+import { isOverdue, formatInZone, dateInZone } from '@medication-tracker/core';
 import type { MedicationRepository } from '@medication-tracker/api';
 import type { Notifier } from './notifier.js';
 
@@ -10,11 +10,6 @@ function doseKey(medicationId: string, scheduledFor: string): string {
 // key means a new prescription (new pickup date) earns a fresh reminder.
 function refillKey(medicationId: string, lastPickupDate: string): string {
   return `refill:${medicationId}:${lastPickupDate}`;
-}
-
-// "2026-06-28T13:00:00Z" -> "13:00" (shown as the time that was entered).
-function formatTime(scheduledFor: string): string {
-  return scheduledFor.slice(11, 16);
 }
 
 // "2026-07-25" -> "25 Jul"
@@ -33,7 +28,8 @@ function formatDate(isoDate: string): string {
 export async function runSweep(
   repo: MedicationRepository,
   notifier: Notifier,
-  now: string
+  now: string,
+  timeZone = 'UTC'
 ): Promise<void> {
   const notified = new Set(await repo.getNotifiedDoseKeys());
   const meds = await repo.listMedications();
@@ -46,14 +42,14 @@ export async function runSweep(
     const key = doseKey(dose.medicationId, dose.scheduledFor);
     if (notified.has(key)) continue;
     const name = medById.get(dose.medicationId)?.name ?? dose.medicationId;
-    await notifier.send(`Overdue: ${name} was due at ${formatTime(dose.scheduledFor)}`);
+    await notifier.send(`Overdue: ${name} was due at ${formatInZone(dose.scheduledFor, timeZone)}`);
     await repo.recordDoseNotified(key);
     notified.add(key);
   }
 
   // 2) Refills due — daysUntilRefill <= 0 means supply has dropped to within the
   // medication's lead time of running out.
-  const statuses = await repo.getRefillStatuses(now.slice(0, 10));
+  const statuses = await repo.getRefillStatuses(dateInZone(now, timeZone));
   for (const status of statuses) {
     if (status.daysUntilRefill > 0) continue;
     const med = medById.get(status.medicationId);

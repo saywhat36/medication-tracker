@@ -5,6 +5,7 @@ import {
   dosesForDay,
   scheduledDosesForDay,
   dosesTakenSincePickup,
+  computeReschedule,
 } from '@medication-tracker/core';
 import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
 import type { MedicationRepository } from './repository.js';
@@ -35,9 +36,11 @@ const SCHEMA = `
 // MedicationRepository interface (shared with the async Postgres implementation).
 export class SqliteMedicationRepository implements MedicationRepository {
   private db: DatabaseSync;
+  private timeZone: string;
 
-  constructor(db: DatabaseSync, medications: Medication[] = [], doses: Dose[] = []) {
+  constructor(db: DatabaseSync, medications: Medication[] = [], doses: Dose[] = [], timeZone = 'UTC') {
     this.db = db;
+    this.timeZone = timeZone;
     this.db.exec(SCHEMA);
     for (const med of medications) this.insertMedication(med);
     for (const dose of doses) this.insertDose(dose);
@@ -95,12 +98,12 @@ export class SqliteMedicationRepository implements MedicationRepository {
 
   async getDosesForDay(date: string): Promise<Dose[]> {
     const rows = this.db.prepare('SELECT * FROM doses').all() as Record<string, unknown>[];
-    return dosesForDay(rows.map(toDose), date);
+    return dosesForDay(rows.map(toDose), date, this.timeZone);
   }
 
   async ensureDosesForDay(date: string): Promise<Dose[]> {
     // addDoses uses INSERT OR IGNORE, so re-running is a no-op for existing doses.
-    await this.addDoses(scheduledDosesForDay(await this.listMedications(), date));
+    await this.addDoses(scheduledDosesForDay(await this.listMedications(), date, this.timeZone));
     return this.getDosesForDay(date);
   }
 
@@ -141,22 +144,17 @@ export class SqliteMedicationRepository implements MedicationRepository {
     const allDoses = (this.db.prepare('SELECT * FROM doses').all() as Record<string, unknown>[]).map(
       toDose
     );
-    const toMove = allDoses.filter(
-      (d) =>
-        d.medicationId === medicationId &&
-        d.takenAt === null &&
-        d.scheduledFor.slice(0, 10) >= fromDate &&
-        d.scheduledFor.slice(11, 16) === oldTime
+    const { toRemove, toAdd } = computeReschedule(
+      allDoses,
+      medicationId,
+      oldTime,
+      newTime,
+      fromDate,
+      this.timeZone
     );
     const del = this.db.prepare('DELETE FROM doses WHERE medication_id = ? AND scheduled_for = ?');
-    for (const d of toMove) del.run(d.medicationId, d.scheduledFor);
-    await this.addDoses(
-      toMove.map((d) => ({
-        medicationId,
-        scheduledFor: `${d.scheduledFor.slice(0, 10)}T${newTime}:00Z`,
-        takenAt: null,
-      }))
-    );
+    for (const d of toRemove) del.run(d.medicationId, d.scheduledFor);
+    await this.addDoses(toAdd);
   }
 
   async getRefillStatuses(today: string): Promise<RefillStatus[]> {
