@@ -13,3 +13,9 @@ RUN npm ci
 
 # Copy source after deps so code changes don't bust the cache
 COPY packages/ packages/
+
+# Default to running the API. docker-compose overrides this per service
+# (api / sweep / web); single-service hosts (e.g. Render) use this default.
+# The app listens on $PORT (the host injects it) and falls back to 3000.
+EXPOSE 3000
+CMD ["npx", "tsx", "packages/api/src/main.ts"]

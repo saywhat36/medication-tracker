@@ -1,0 +1,18 @@
+# Render Blueprint for the API. In Render: New → Blueprint → connect this repo.
+# Render builds the Dockerfile (whose default CMD runs the API) and injects PORT.
+# Secrets (sync: false) are entered in the Render dashboard, never committed.
+services:
+  - type: web
+    name: medication-tracker-api
+    runtime: docker
+    branch: main
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    plan: free
+    envVars:
+      - key: APP_TIMEZONE
+        value: Europe/London
+      - key: DATABASE_URL
+        sync: false # your Neon connection string
+      - key: API_TOKEN
+        sync: false # a long random secret (openssl rand -hex 32)
