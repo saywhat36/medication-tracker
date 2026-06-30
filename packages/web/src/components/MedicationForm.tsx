@@ -7,6 +7,7 @@ interface Props {
   title: string;
   submitLabel: string;
   initial?: Partial<MedicationFormData>;
+  initialPillsNow?: number; // current pills remaining (for prefilling on edit)
   showTime?: boolean; // include the daily dose time field (used when adding)
   onSubmit: (data: MedicationFormData) => Promise<void>;
   onCancel: () => void;
@@ -15,14 +16,18 @@ interface Props {
 const inputClass =
   'w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring';
 
-export function MedicationForm({ title, submitLabel, initial, showTime = false, onSubmit, onCancel }: Props) {
+export function MedicationForm({
+  title,
+  submitLabel,
+  initial,
+  initialPillsNow,
+  showTime = false,
+  onSubmit,
+  onCancel,
+}: Props) {
   const today = new Date().toISOString().slice(0, 10);
   const [name, setName] = useState(initial?.name ?? '');
-  const [pillsAtPickup, setPillsAtPickup] = useState(
-    initial?.pillsAtPickup != null ? String(initial.pillsAtPickup) : ''
-  );
-  const [lastPickupDate, setLastPickupDate] = useState(initial?.lastPickupDate ?? today);
-  const [priorDosesTaken, setPriorDosesTaken] = useState(String(initial?.priorDosesTaken ?? 0));
+  const [pillsNow, setPillsNow] = useState(initialPillsNow != null ? String(initialPillsNow) : '');
   const [dosesPerDay, setDosesPerDay] = useState(String(initial?.dosesPerDay ?? 1));
   const [refillLeadTimeDays, setRefillLeadTimeDays] = useState(String(initial?.refillLeadTimeDays ?? 7));
   const [scheduleTime, setScheduleTime] = useState(initial?.schedule?.[0] ?? '09:00');
@@ -36,9 +41,11 @@ export function MedicationForm({ title, submitLabel, initial, showTime = false, 
     try {
       await onSubmit({
         name: name.trim(),
-        pillsAtPickup: Number(pillsAtPickup),
-        lastPickupDate,
-        priorDosesTaken: Number(priorDosesTaken),
+        // "Pills you have now" becomes the baseline as of today — no pickup date
+        // to remember. The count then ticks down from here.
+        pillsAtPickup: Number(pillsNow),
+        lastPickupDate: today,
+        priorDosesTaken: 0,
         dosesPerDay: Number(dosesPerDay),
         refillLeadTimeDays: Number(refillLeadTimeDays),
         // When not editing the time, preserve the existing schedule.
@@ -61,18 +68,8 @@ export function MedicationForm({ title, submitLabel, initial, showTime = false, 
       </label>
 
       <label className="block space-y-1">
-        <span className="text-xs text-muted-foreground">Date of last prescription pickup</span>
-        <input required type="date" value={lastPickupDate} onChange={(e) => setLastPickupDate(e.target.value)} className={inputClass} />
-      </label>
-
-      <label className="block space-y-1">
-        <span className="text-xs text-muted-foreground">Pills collected at that pickup</span>
-        <input required type="number" min="1" value={pillsAtPickup} onChange={(e) => setPillsAtPickup(e.target.value)} placeholder="e.g. 30" className={inputClass} />
-      </label>
-
-      <label className="block space-y-1">
-        <span className="text-xs text-muted-foreground">Pills already taken since pickup</span>
-        <input required type="number" min="0" value={priorDosesTaken} onChange={(e) => setPriorDosesTaken(e.target.value)} placeholder="0" className={inputClass} />
+        <span className="text-xs text-muted-foreground">How many pills do you have now?</span>
+        <input required type="number" min="0" value={pillsNow} onChange={(e) => setPillsNow(e.target.value)} placeholder="e.g. 30" className={inputClass} />
       </label>
 
       <label className="block space-y-1">
