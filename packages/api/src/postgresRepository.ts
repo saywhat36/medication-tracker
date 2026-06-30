@@ -60,6 +60,25 @@ export class PostgresMedicationRepository implements MedicationRepository {
     await this.pool.query('DELETE FROM doses WHERE medication_id = $1', [medicationId]);
   }
 
+  async updateMedication(med: Medication): Promise<void> {
+    const result = await this.pool.query(
+      `UPDATE medications SET name = $1, pills_at_pickup = $2, last_pickup_date = $3, prior_doses_taken = $4, doses_per_day = $5, refill_lead_time_days = $6, schedule = $7 WHERE id = $8`,
+      [
+        med.name,
+        med.pillsAtPickup,
+        med.lastPickupDate,
+        med.priorDosesTaken ?? 0,
+        med.dosesPerDay,
+        med.refillLeadTimeDays,
+        JSON.stringify(med.schedule),
+        med.id,
+      ]
+    );
+    if (result.rowCount === 0) {
+      throw new Error(`Medication not found: ${med.id}`);
+    }
+  }
+
   async addDoses(doses: Dose[]): Promise<void> {
     for (const dose of doses) {
       await this.pool.query(

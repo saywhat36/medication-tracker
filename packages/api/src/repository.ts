@@ -7,6 +7,8 @@ export interface MedicationRepository {
   addMedication(med: Medication): Promise<void>;
   // Remove a medication and all of its dose records. Throws if it doesn't exist.
   deleteMedication(medicationId: string): Promise<void>;
+  // Update a medication's stored fields (by id). Throws if it doesn't exist.
+  updateMedication(med: Medication): Promise<void>;
   addDoses(doses: Dose[]): Promise<void>;
   getDueDoses(now: string): Promise<Dose[]>;
   getDosesForDay(date: string): Promise<Dose[]>;

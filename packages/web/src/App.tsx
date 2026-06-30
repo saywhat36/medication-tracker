@@ -91,6 +91,16 @@ export default function App() {
     });
   }
 
+  function handleMedicationUpdated() {
+    void Promise.all([api.getMedications(), api.getTodaysDoses(), api.getRefillStatuses()]).then(
+      ([meds, doses, statuses]) => {
+        setMedications(meds);
+        setDueDoses(doses);
+        setRefillStatuses(statuses);
+      }
+    );
+  }
+
   if (needsLogin) {
     return <LoginForm onSuccess={load} />;
   }
@@ -168,7 +178,11 @@ export default function App() {
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
           Medications
         </h2>
-        <MedicationList medications={medications} onDeleted={handleMedicationDeleted} />
+        <MedicationList
+          medications={medications}
+          onDeleted={handleMedicationDeleted}
+          onUpdated={handleMedicationUpdated}
+        />
         <AddMedicationForm onAdded={handleMedicationAdded} onSubmit={api.addMedication} />
       </section>
     </div>

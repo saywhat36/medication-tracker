@@ -62,6 +62,12 @@ export const mockClient = {
     if (index !== -1) mockMedications.splice(index, 1);
     return Promise.resolve();
   },
+  updateMedication: (id: string, data: Omit<Medication, 'id'>) => {
+    const med: Medication = { id, ...data };
+    const index = mockMedications.findIndex((m) => m.id === id);
+    if (index !== -1) mockMedications[index] = med;
+    return Promise.resolve(med);
+  },
   rescheduleMedication: (id: string, oldTime: string, newTime: string) => {
     const med = mockMedications.find((m) => m.id === id);
     if (med) med.schedule = med.schedule.map((t) => (t === oldTime ? newTime : t));
