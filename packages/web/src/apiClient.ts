@@ -89,6 +89,13 @@ export const apiClient = {
       json<void>(r)
     ),
 
+  updateMedication: (id: string, data: Omit<Medication, 'id'>) =>
+    fetch(`${BASE}/medications/${id}`, {
+      method: 'PUT',
+      headers: headers(true),
+      body: JSON.stringify(data),
+    }).then((r) => json<Medication>(r)),
+
   rescheduleMedication: (id: string, oldTime: string, newTime: string) =>
     fetch(`${BASE}/medications/${id}`, {
       method: 'PATCH',

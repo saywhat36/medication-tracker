@@ -38,6 +38,14 @@ export class InMemoryMedicationRepository implements MedicationRepository {
     this.doses = this.doses.filter((d) => d.medicationId !== medicationId);
   }
 
+  async updateMedication(med: Medication): Promise<void> {
+    const index = this.medications.findIndex((m) => m.id === med.id);
+    if (index === -1) {
+      throw new Error(`Medication not found: ${med.id}`);
+    }
+    this.medications[index] = { ...med };
+  }
+
   async addDoses(doses: Dose[]): Promise<void> {
     for (const dose of doses) {
       const exists = this.doses.some(

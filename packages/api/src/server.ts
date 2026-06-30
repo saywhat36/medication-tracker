@@ -94,6 +94,29 @@ export function createServer(
     })
   );
 
+  app.put(
+    '/medications/:id',
+    asyncHandler(async (req, res) => {
+      const { id } = req.params;
+      const body = req.body as {
+        name: string;
+        pillsAtPickup: number;
+        lastPickupDate: string;
+        priorDosesTaken?: number;
+        dosesPerDay: number;
+        refillLeadTimeDays: number;
+        schedule: string[];
+      };
+      const med = { id, priorDosesTaken: 0, ...body };
+      try {
+        await repo.updateMedication(med);
+        res.json(med);
+      } catch (err) {
+        res.status(404).json({ error: (err as Error).message });
+      }
+    })
+  );
+
   app.delete(
     '/medications/:id',
     asyncHandler(async (req, res) => {

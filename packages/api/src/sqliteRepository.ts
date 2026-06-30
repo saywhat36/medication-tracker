@@ -78,6 +78,26 @@ export class SqliteMedicationRepository implements MedicationRepository {
     this.db.prepare('DELETE FROM doses WHERE medication_id = ?').run(medicationId);
   }
 
+  async updateMedication(med: Medication): Promise<void> {
+    const result = this.db
+      .prepare(
+        `UPDATE medications SET name = ?, pills_at_pickup = ?, last_pickup_date = ?, prior_doses_taken = ?, doses_per_day = ?, refill_lead_time_days = ?, schedule = ? WHERE id = ?`
+      )
+      .run(
+        med.name,
+        med.pillsAtPickup,
+        med.lastPickupDate,
+        med.priorDosesTaken ?? 0,
+        med.dosesPerDay,
+        med.refillLeadTimeDays,
+        JSON.stringify(med.schedule),
+        med.id
+      );
+    if ((result as { changes: number }).changes === 0) {
+      throw new Error(`Medication not found: ${med.id}`);
+    }
+  }
+
   async addDoses(doses: Dose[]): Promise<void> {
     const stmt = this.db.prepare(
       `INSERT OR IGNORE INTO doses (medication_id, scheduled_for, taken_at) VALUES (?, ?, ?)`

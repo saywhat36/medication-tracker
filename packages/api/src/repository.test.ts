@@ -68,6 +68,44 @@ export function runRepositoryTests(
     });
   });
 
+  describe('updateMedication', () => {
+    it('updates a medication\'s fields', async () => {
+      const repo = await makeRepo();
+      await repo.updateMedication({
+        id: 'med-1',
+        name: 'Metformin XR',
+        pillsAtPickup: 60,
+        lastPickupDate: '2026-06-25',
+        priorDosesTaken: 5,
+        dosesPerDay: 1,
+        refillLeadTimeDays: 7,
+        schedule: ['08:00'],
+      });
+      const med = (await repo.listMedications()).find((m) => m.id === 'med-1');
+      expect(med?.name).toBe('Metformin XR');
+      expect(med?.pillsAtPickup).toBe(60);
+      const status = (await repo.getRefillStatuses('2026-06-25')).find(
+        (s) => s.medicationId === 'med-1'
+      );
+      expect(status?.pillsRemaining).toBe(55); // 60 − 5 prior − 0 ticked
+    });
+
+    it('throws when the medication does not exist', async () => {
+      const repo = await makeRepo();
+      await expect(
+        repo.updateMedication({
+          id: 'nope',
+          name: 'x',
+          pillsAtPickup: 1,
+          lastPickupDate: '2026-06-25',
+          dosesPerDay: 1,
+          refillLeadTimeDays: 1,
+          schedule: ['08:00'],
+        })
+      ).rejects.toThrow();
+    });
+  });
+
   describe('rescheduleMedication', () => {
     it('moves an untaken dose on/after fromDate to the new time', async () => {
       const repo = await makeRepo();

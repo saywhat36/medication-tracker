@@ -143,6 +143,37 @@ describe('PATCH /medications/:id', () => {
   });
 });
 
+describe('PUT /medications/:id', () => {
+  it('updates the medication and returns it', async () => {
+    const app = makeApp();
+    const res = await request(app).put('/medications/med-1').send({
+      name: 'Renamed',
+      pillsAtPickup: 50,
+      lastPickupDate: '2026-06-25',
+      priorDosesTaken: 0,
+      dosesPerDay: 1,
+      refillLeadTimeDays: 7,
+      schedule: ['08:00'],
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.name).toBe('Renamed');
+    const meds = await request(app).get('/medications');
+    expect(meds.body.find((m: { id: string }) => m.id === 'med-1').name).toBe('Renamed');
+  });
+
+  it('returns 404 when the medication does not exist', async () => {
+    const res = await request(makeApp()).put('/medications/nope').send({
+      name: 'x',
+      pillsAtPickup: 1,
+      lastPickupDate: '2026-06-25',
+      dosesPerDay: 1,
+      refillLeadTimeDays: 1,
+      schedule: ['08:00'],
+    });
+    expect(res.status).toBe(404);
+  });
+});
+
 describe('DELETE /medications/:id', () => {
   it('deletes the medication and its doses', async () => {
     const app = makeApp();
