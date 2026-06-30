@@ -1,15 +1,16 @@
 import { useState } from 'react';
-import type { Medication } from '@medication-tracker/core';
+import type { Medication, RefillStatus } from '@medication-tracker/core';
 import { api } from '@/api';
 import { MedicationForm } from '@/components/MedicationForm';
 
 interface Props {
   medications: Medication[];
+  refillStatuses: RefillStatus[];
   onDeleted: (id: string) => void;
   onUpdated: () => void;
 }
 
-export function MedicationList({ medications, onDeleted, onUpdated }: Props) {
+export function MedicationList({ medications, refillStatuses, onDeleted, onUpdated }: Props) {
   const [pending, setPending] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -43,6 +44,9 @@ export function MedicationList({ medications, onDeleted, onUpdated }: Props) {
               title="Edit medication"
               submitLabel="Save changes"
               initial={med}
+              initialPillsNow={
+                refillStatuses.find((s) => s.medicationId === med.id)?.pillsRemaining
+              }
               onSubmit={async (data) => {
                 await api.updateMedication(med.id, data);
                 setEditingId(null);

@@ -180,6 +180,7 @@ export default function App() {
         </h2>
         <MedicationList
           medications={medications}
+          refillStatuses={refillStatuses}
           onDeleted={handleMedicationDeleted}
           onUpdated={handleMedicationUpdated}
         />
