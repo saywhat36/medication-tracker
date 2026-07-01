@@ -92,7 +92,7 @@ export function DoseList({ doses, medications, onTaken, onUntaken, onRescheduled
               <input
                 type="checkbox"
                 checked={isTaken}
-                disabled={isBusy || isUpcoming}
+                disabled={isBusy}
                 onChange={() => handleToggle(dose)}
                 className="h-4 w-4 rounded border-gray-300 text-primary accent-primary cursor-pointer disabled:cursor-default"
                 aria-label={`Mark ${med?.name ?? dose.medicationId} ${isTaken ? 'not taken' : 'taken'}`}
