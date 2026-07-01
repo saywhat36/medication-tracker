@@ -14,7 +14,7 @@ async function main(): Promise<void> {
       ? TelegramNotifier.fromEnv()
       : new ConsoleNotifier();
 
-  const timeZone = process.env['APP_TIMEZONE'] ?? 'UTC';
+  const timeZone = process.env['APP_TIMEZONE'] || 'UTC';
   const now = new Date().toISOString();
   console.log(`[sweep:once] running at ${now}, tz: ${timeZone}, notifier: ${notifier.constructor.name}`);
   await repo.ensureDosesForDay(dateInZone(now, timeZone));
