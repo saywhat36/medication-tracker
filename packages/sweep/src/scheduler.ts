@@ -8,7 +8,7 @@ import { runSweep } from './sweep.js';
 async function main(): Promise<void> {
   // Same backend selection as the API: Postgres if DATABASE_URL is set, else SQLite.
   const repo = await createRepository();
-  const timeZone = process.env['APP_TIMEZONE'] ?? 'UTC';
+  const timeZone = process.env['APP_TIMEZONE'] || 'UTC';
 
   const notifier =
     process.env['TELEGRAM_BOT_TOKEN'] && process.env['TELEGRAM_CHAT_ID']

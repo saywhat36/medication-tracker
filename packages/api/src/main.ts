@@ -10,7 +10,7 @@ async function main(): Promise<void> {
   const port = Number(process.env['PORT'] ?? 3000);
   createServer(repo, undefined, {
     apiToken,
-    timeZone: process.env['APP_TIMEZONE'] ?? 'UTC',
+    timeZone: process.env['APP_TIMEZONE'] || 'UTC',
     appPassword: process.env['APP_PASSWORD'],
     corsOrigin: process.env['WEB_ORIGIN'],
   }).listen(port, () => {

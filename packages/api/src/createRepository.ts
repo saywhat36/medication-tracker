@@ -10,7 +10,7 @@ import type { MedicationRepository } from './repository.js';
 //   otherwise         -> local SQLite file under DATA_DIR
 export async function createRepository(): Promise<MedicationRepository> {
   const databaseUrl = process.env['DATABASE_URL'];
-  const timeZone = process.env['APP_TIMEZONE'] ?? 'UTC';
+  const timeZone = process.env['APP_TIMEZONE'] || 'UTC';
   console.log(`[api] timezone: ${timeZone}`);
 
   if (databaseUrl) {
