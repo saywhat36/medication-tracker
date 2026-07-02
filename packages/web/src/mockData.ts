@@ -80,13 +80,17 @@ export const mockClient = {
   // then the caller appended the returned med to that state as well.
   getMedications: () => Promise.resolve([...mockMedications]),
   getTodaysDoses: () => Promise.resolve([...mockTodaysDoses]),
-  markTaken: (_medicationId: string, scheduledFor: string) => {
-    const dose = mockTodaysDoses.find((d) => d.scheduledFor === scheduledFor);
+  markTaken: (medicationId: string, scheduledFor: string) => {
+    const dose = mockTodaysDoses.find(
+      (d) => d.medicationId === medicationId && d.scheduledFor === scheduledFor
+    );
     if (dose) dose.takenAt = new Date().toISOString();
     return Promise.resolve();
   },
-  markUntaken: (_medicationId: string, scheduledFor: string) => {
-    const dose = mockTodaysDoses.find((d) => d.scheduledFor === scheduledFor);
+  markUntaken: (medicationId: string, scheduledFor: string) => {
+    const dose = mockTodaysDoses.find(
+      (d) => d.medicationId === medicationId && d.scheduledFor === scheduledFor
+    );
     if (dose) dose.takenAt = null;
     return Promise.resolve();
   },
@@ -96,6 +100,13 @@ export const mockClient = {
     // The real API computes a refill status for every medication; without
     // one here a freshly added med renders as an empty bottle in shop view.
     mockRefillStatuses.push(freshStatus(med));
+    // It also creates today's doses for the new schedule (ensureDosesForDay).
+    for (const time of med.schedule) {
+      const [h, m] = time.split(':').map(Number);
+      const d = new Date();
+      d.setHours(h ?? 0, m ?? 0, 0, 0);
+      mockTodaysDoses.push({ medicationId: med.id, scheduledFor: d.toISOString(), takenAt: null });
+    }
     return Promise.resolve(med);
   },
   deleteMedication: (id: string) => {
@@ -103,6 +114,10 @@ export const mockClient = {
     if (index !== -1) mockMedications.splice(index, 1);
     const statusIndex = mockRefillStatuses.findIndex((s) => s.medicationId === id);
     if (statusIndex !== -1) mockRefillStatuses.splice(statusIndex, 1);
+    // The real API removes the dose history with the medication.
+    for (let i = mockTodaysDoses.length - 1; i >= 0; i--) {
+      if (mockTodaysDoses[i]?.medicationId === id) mockTodaysDoses.splice(i, 1);
+    }
     return Promise.resolve();
   },
   updateMedication: (id: string, data: Omit<Medication, 'id'>) => {

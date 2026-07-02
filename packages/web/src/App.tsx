@@ -9,6 +9,7 @@ import { MedicationList } from '@/components/MedicationList';
 import { PillJar } from '@/components/PillJar';
 import { RefillList } from '@/components/RefillList';
 import { ShopView } from '@/components/shop/ShopView';
+import { setDoseTaken } from '@/lib/doses';
 import { useViewMode } from '@/view';
 
 export default function App() {
@@ -56,18 +57,12 @@ export default function App() {
   }
 
   function handleTaken(medicationId: string, scheduledFor: string) {
-    setDueDoses((prev) =>
-      prev.map((d) =>
-        d.scheduledFor === scheduledFor ? { ...d, takenAt: new Date().toISOString() } : d
-      )
-    );
+    setDueDoses((prev) => setDoseTaken(prev, medicationId, scheduledFor, new Date().toISOString()));
     adjustPills(medicationId, -1);
   }
 
   function handleUntaken(medicationId: string, scheduledFor: string) {
-    setDueDoses((prev) =>
-      prev.map((d) => (d.scheduledFor === scheduledFor ? { ...d, takenAt: null } : d))
-    );
+    setDueDoses((prev) => setDoseTaken(prev, medicationId, scheduledFor, null));
     adjustPills(medicationId, +1);
   }
 
@@ -134,6 +129,7 @@ export default function App() {
         onDoseUntaken={handleUntaken}
         onMedicationAdded={handleMedicationAdded}
         onMedicationUpdated={handleMedicationUpdated}
+        onMedicationDeleted={handleMedicationDeleted}
         onSwitchToClassic={() => setView('classic')}
       />
     );

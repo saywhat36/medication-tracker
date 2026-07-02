@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Dose, Medication } from '@medication-tracker/core';
 import { api } from '@/api';
+import { doseKey } from '@/lib/doses';
 import { localHHMM } from '@/lib/time';
 
 interface Props {
@@ -18,7 +19,10 @@ export function DoseList({ doses, medications, onTaken, onUntaken, onRescheduled
   const [savingEdit, setSavingEdit] = useState(false);
 
   async function handleToggle(dose: Dose) {
-    setPending((s) => new Set(s).add(dose.scheduledFor));
+    // Keyed by medication AND time — several medications can share a
+    // scheduled time, and per-dose state must not bleed across them.
+    const key = doseKey(dose);
+    setPending((s) => new Set(s).add(key));
     try {
       if (dose.takenAt === null) {
         await api.markTaken(dose.medicationId, dose.scheduledFor);
@@ -30,14 +34,14 @@ export function DoseList({ doses, medications, onTaken, onUntaken, onRescheduled
     } finally {
       setPending((s) => {
         const next = new Set(s);
-        next.delete(dose.scheduledFor);
+        next.delete(key);
         return next;
       });
     }
   }
 
   function startEdit(dose: Dose) {
-    setEditing(dose.scheduledFor);
+    setEditing(doseKey(dose));
     setDraftTime(localHHMM(dose.scheduledFor));
   }
 
@@ -69,11 +73,11 @@ export function DoseList({ doses, medications, onTaken, onUntaken, onRescheduled
         .sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor))
         .map((dose) => {
           const med = medications.find((m) => m.id === dose.medicationId);
-          const isBusy = pending.has(dose.scheduledFor);
+          const isBusy = pending.has(doseKey(dose));
           const isTaken = dose.takenAt !== null;
           const isUpcoming = !isTaken && dose.scheduledFor > now;
           const time = localHHMM(dose.scheduledFor);
-          const isEditing = editing === dose.scheduledFor;
+          const isEditing = editing === doseKey(dose);
 
           return (
             <li
