@@ -12,13 +12,16 @@ const INTERIOR_WIDTH = 592;
 
 interface Props {
   bottles: BottleData[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  onEdit: (id: string) => void;
 }
 
 // The apothecary cabinet: dark panelled wall, wooden frame, two shelf boards
 // stocked with one bottle per medication, and the counter top running along
 // the bottom. Drawn as SVG so it scales to any width and the bottles can
 // become interactive elements in a later MR.
-export function ShelfUnit({ bottles }: Props) {
+export function ShelfUnit({ bottles, selectedId, onSelect, onEdit }: Props) {
   // Up to four bottles sit together on the top shelf; beyond that the two
   // shelves split evenly (top gets the odd one). Beyond ~8 bottles a shelf
   // they start to touch — plenty for a personal app.
@@ -54,6 +57,9 @@ export function ShelfUnit({ bottles }: Props) {
               bottle={bottle}
               x={Math.round(INTERIOR_X + slotWidth * (i + 0.5))}
               shelfY={SHELF_YS[shelfIndex] ?? 158}
+              selected={selectedId === bottle.id}
+              onSelect={() => onSelect(bottle.id)}
+              onEdit={() => onEdit(bottle.id)}
             />
           );
         })

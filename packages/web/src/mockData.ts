@@ -40,6 +40,22 @@ export const mockRefillStatuses: RefillStatus[] = [
   { medicationId: 'med-2', pillsRemaining: 4, daysUntilRefill: 3, runOutDate: '2026-07-05', refillDate: '2026-06-28' },
 ];
 
+// What the real API would compute for a medication whose pill count was just
+// (re)baselined — pillsAtPickup pills as of today.
+function freshStatus(med: Medication): RefillStatus {
+  const daysOfSupply = Math.floor(med.pillsAtPickup / Math.max(1, med.dosesPerDay));
+  const dayMs = 24 * 60 * 60 * 1000;
+  const isoDate = (daysAhead: number) =>
+    new Date(Date.now() + daysAhead * dayMs).toISOString().slice(0, 10);
+  return {
+    medicationId: med.id,
+    pillsRemaining: med.pillsAtPickup,
+    daysUntilRefill: Math.max(0, daysOfSupply - med.refillLeadTimeDays),
+    runOutDate: isoDate(daysOfSupply),
+    refillDate: isoDate(Math.max(0, daysOfSupply - med.refillLeadTimeDays)),
+  };
+}
+
 export const mockClient = {
   login: (_password: string) => Promise.resolve(true),
   // Return copies, like the network would. Handing out the live arrays lets
@@ -63,17 +79,7 @@ export const mockClient = {
     mockMedications.push(med);
     // The real API computes a refill status for every medication; without
     // one here a freshly added med renders as an empty bottle in shop view.
-    const daysOfSupply = Math.floor(med.pillsAtPickup / Math.max(1, med.dosesPerDay));
-    const dayMs = 24 * 60 * 60 * 1000;
-    const isoDate = (daysAhead: number) =>
-      new Date(Date.now() + daysAhead * dayMs).toISOString().slice(0, 10);
-    mockRefillStatuses.push({
-      medicationId: med.id,
-      pillsRemaining: med.pillsAtPickup,
-      daysUntilRefill: Math.max(0, daysOfSupply - med.refillLeadTimeDays),
-      runOutDate: isoDate(daysOfSupply),
-      refillDate: isoDate(Math.max(0, daysOfSupply - med.refillLeadTimeDays)),
-    });
+    mockRefillStatuses.push(freshStatus(med));
     return Promise.resolve(med);
   },
   deleteMedication: (id: string) => {
@@ -87,6 +93,10 @@ export const mockClient = {
     const med: Medication = { id, ...data };
     const index = mockMedications.findIndex((m) => m.id === id);
     if (index !== -1) mockMedications[index] = med;
+    // Editing rebaselines the pill count, so the status must follow — the
+    // real API recomputes it server-side.
+    const statusIndex = mockRefillStatuses.findIndex((s) => s.medicationId === id);
+    if (statusIndex !== -1) mockRefillStatuses[statusIndex] = freshStatus(med);
     return Promise.resolve(med);
   },
   rescheduleMedication: (id: string, oldTime: string, newTime: string) => {

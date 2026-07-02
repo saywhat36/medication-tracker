@@ -9,6 +9,9 @@ interface Props {
   initial?: Partial<MedicationFormData>;
   initialPillsNow?: number; // current pills remaining (for prefilling on edit)
   showTime?: boolean; // include the daily dose time field (used when adding)
+  // 'bare' drops the form's own card chrome, for hosts that provide their
+  // own container (the shop view's parchment modal).
+  variant?: 'card' | 'bare';
   onSubmit: (data: MedicationFormData) => Promise<void>;
   onCancel: () => void;
 }
@@ -24,6 +27,7 @@ export function MedicationForm({
   initial,
   initialPillsNow,
   showTime = false,
+  variant = 'card',
   onSubmit,
   onCancel,
 }: Props) {
@@ -78,7 +82,10 @@ export function MedicationForm({
     }`;
 
   return (
-    <form onSubmit={(e) => void handleSubmit(e)} className="rounded-lg border border-border p-4 space-y-3">
+    <form
+      onSubmit={(e) => void handleSubmit(e)}
+      className={variant === 'card' ? 'rounded-lg border border-border p-4 space-y-3' : 'space-y-3'}
+    >
       <h3 className="text-sm font-semibold">{title}</h3>
 
       <label className="block space-y-1">

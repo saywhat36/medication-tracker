@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import type { Medication, RefillStatus } from '@medication-tracker/core';
+import { EditBottleModal } from './EditBottleModal';
 import { Parchment } from './Parchment';
 import { ShelfUnit } from './ShelfUnit';
 import { toBottles } from './bottleData';
@@ -6,14 +8,27 @@ import { toBottles } from './bottleData';
 interface Props {
   medications: Medication[];
   refillStatuses: RefillStatus[];
+  onMedicationUpdated: () => void;
   onSwitchToClassic: () => void;
 }
 
 // The apothecary shop dashboard. The cabinet is stocked with one bottle per
-// medication; later MRs make the bottles editable (MR 3) and lay the REMEMBER
-// note (MR 4) and due-today paper (MR 5) on the counter.
-export function ShopView({ medications, refillStatuses, onSwitchToClassic }: Props) {
+// medication; double-clicking (or double-tapping) a bottle opens its edit
+// form on parchment. Later MRs lay the REMEMBER note (MR 4) and due-today
+// paper (MR 5) on the counter.
+export function ShopView({
+  medications,
+  refillStatuses,
+  onMedicationUpdated,
+  onSwitchToClassic,
+}: Props) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
   const bottles = toBottles(medications, refillStatuses);
+  const selected = bottles.find((b) => b.id === selectedId);
+  const editing = medications.find((m) => m.id === editingId);
+
   const today = new Date().toLocaleDateString(undefined, {
     weekday: 'long',
     month: 'long',
@@ -38,7 +53,27 @@ export function ShopView({ medications, refillStatuses, onSwitchToClassic }: Pro
           </button>
         </header>
 
-        <ShelfUnit bottles={bottles} />
+        <div>
+          <ShelfUnit
+            bottles={bottles}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onEdit={(id) => setEditingId(id)}
+          />
+          <p className="mt-1 min-h-[1.75rem] text-center font-hand text-lg text-apothecary-parchment-edge">
+            {selected ? (
+              <button
+                onClick={() => setEditingId(selected.id)}
+                className="underline decoration-dotted underline-offset-4 hover:text-apothecary-parchment-light"
+              >
+                {selected.name} — {selected.pillsRemaining}{' '}
+                {selected.pillsRemaining === 1 ? 'pill' : 'pills'} left · edit
+              </button>
+            ) : bottles.length > 0 ? (
+              'double-tap a bottle to edit it'
+            ) : null}
+          </p>
+        </div>
 
         <div className="rounded-sm bg-apothecary-wood-counter p-5 sm:p-8">
           <Parchment className="text-center">
@@ -57,6 +92,18 @@ export function ShopView({ medications, refillStatuses, onSwitchToClassic }: Pro
           </Parchment>
         </div>
       </div>
+
+      {editing && (
+        <EditBottleModal
+          medication={editing}
+          pillsRemaining={bottles.find((b) => b.id === editing.id)?.pillsRemaining ?? 0}
+          onSaved={() => {
+            setEditingId(null);
+            onMedicationUpdated();
+          }}
+          onClose={() => setEditingId(null)}
+        />
+      )}
     </div>
   );
 }
