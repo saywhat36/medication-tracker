@@ -66,12 +66,14 @@ export function ShelfUnit({ bottles, selectedId, onSelect, onEdit }: Props) {
       )}
       <rect x="0" y="370" width="680" height="20" fill={wood['counter-top']} />
       <rect x="0" y="370" width="680" height="3" fill={wood['shelf-edge']} />
-      <g aria-hidden="true">
+      <g aria-hidden="true" className="candle">
         <ellipse cx="600" cy="372" rx="17" ry="5" fill={glass.metal} />
         <rect x="593" y="326" width="14" height="44" rx="4" fill={glass.DEFAULT} />
         <line x1="600" y1="326" x2="600" y2="320" stroke={wood.wall} strokeWidth="1.5" />
-        <ellipse cx="600" cy="312" rx="5" ry="10" fill={flame.DEFAULT} />
-        <ellipse cx="600" cy="315" rx="2.5" ry="5" fill={flame.core} />
+        <g className="candle-flame">
+          <ellipse cx="600" cy="312" rx="5" ry="10" fill={flame.DEFAULT} />
+          <ellipse cx="600" cy="315" rx="2.5" ry="5" fill={flame.core} />
+        </g>
       </g>
     </svg>
   );

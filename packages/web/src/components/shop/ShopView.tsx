@@ -34,6 +34,47 @@ export function ShopView({
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const bottles = toBottles(medications, refillStatuses);
+
+  // A pill pops out of the medication's bottle, arcs down, and lands on the
+  // due-today paper beside the name that was just ticked. Returns whether the
+  // flight actually started, so the paper knows to hold the landed pill back.
+  function flyPill(medicationId: string, nameEl: HTMLElement): boolean {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+    const bottleEl = document.querySelector(`[data-bottle-id="${CSS.escape(medicationId)}"]`);
+    if (!bottleEl) return false;
+
+    const color = bottles.find((b) => b.id === medicationId)?.color ?? '#7B6BA8';
+    const from = bottleEl.getBoundingClientRect();
+    const to = nameEl.getBoundingClientRect();
+    // Launch from the bottle's neck; land just to the right of the name.
+    const x0 = from.left + from.width / 2 - 6;
+    const y0 = from.top + from.height * 0.15;
+    const x1 = to.right + 8;
+    const y1 = to.top + to.height / 2 - 6;
+
+    const pill = document.createElement('div');
+    pill.setAttribute('aria-hidden', 'true');
+    pill.style.cssText =
+      'position:fixed;left:0;top:0;width:12px;height:12px;border-radius:9999px;' +
+      `z-index:60;pointer-events:none;background:${color};border:1px solid rgba(0,0,0,0.25)`;
+    document.body.appendChild(pill);
+
+    const hop = 36;
+    const animation = pill.animate(
+      [
+        { transform: `translate(${x0}px, ${y0}px)`, easing: 'ease-out' },
+        { transform: `translate(${x0 + (x1 - x0) * 0.3}px, ${y0 - hop}px)`, offset: 0.3, easing: 'ease-in' },
+        { transform: `translate(${x1}px, ${y1}px)`, offset: 0.75, easing: 'ease-out' },
+        { transform: `translate(${x1}px, ${y1 - 10}px)`, offset: 0.88, easing: 'ease-in' },
+        { transform: `translate(${x1}px, ${y1}px)` },
+      ],
+      { duration: 700 }
+    );
+    animation.onfinish = () => pill.remove();
+    // Belt and braces — never leave a stray pill on the page.
+    setTimeout(() => pill.remove(), 1500);
+    return true;
+  }
   const selected = bottles.find((b) => b.id === selectedId);
   const editing = medications.find((m) => m.id === editingId);
 
@@ -98,6 +139,7 @@ export function ShopView({
                 medications={medications}
                 onTaken={onDoseTaken}
                 onUntaken={onDoseUntaken}
+                onPillTaken={flyPill}
               />
               <RememberNote medications={medications} statuses={refillStatuses} />
             </div>

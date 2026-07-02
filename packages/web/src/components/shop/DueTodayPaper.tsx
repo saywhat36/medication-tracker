@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Dose, Medication } from '@medication-tracker/core';
 import { api } from '@/api';
 import { localHHMM } from '@/lib/time';
 import { apothecary } from '@/theme/apothecary';
 import { Parchment } from './Parchment';
+import { contentColorFor } from './bottleData';
 
 const { ink } = apothecary;
 
@@ -12,6 +13,10 @@ interface Props {
   medications: Medication[];
   onTaken: (medicationId: string, scheduledFor: string) => void;
   onUntaken: (medicationId: string, scheduledFor: string) => void;
+  // Fired when a dose is ticked, with the name element the pill should land
+  // beside. Returns true if a flight animation actually started, so the
+  // landed pill can be held back until it arrives.
+  onPillTaken?: (medicationId: string, nameEl: HTMLElement) => boolean;
 }
 
 // A hand-drawn tick box: parchment-cream fill, ink border, and a quill-ink
@@ -47,13 +52,30 @@ function InkCheckbox({ checked }: { checked: boolean }) {
 // The due-today sheet on the counter: today's doses as a handwritten
 // checklist. Ticking goes through the same markTaken/markUntaken flow as
 // classic view — early ticks allowed, "upcoming" is just a hint.
-export function DueTodayPaper({ doses, medications, onTaken, onUntaken }: Props) {
+export function DueTodayPaper({ doses, medications, onTaken, onUntaken, onPillTaken }: Props) {
   const [pending, setPending] = useState<Set<string>>(new Set());
+  // Doses whose pill is still mid-flight — the landed pill waits for it.
+  const [landing, setLanding] = useState<Set<string>>(new Set());
+  const nameRefs = useRef(new Map<string, HTMLSpanElement>());
+
+  const doseKey = (dose: Dose) => `${dose.medicationId}-${dose.scheduledFor}`;
 
   async function handleToggle(dose: Dose) {
+    const key = doseKey(dose);
     setPending((s) => new Set(s).add(dose.scheduledFor));
     try {
       if (dose.takenAt === null) {
+        const nameEl = nameRefs.current.get(key);
+        if (onPillTaken && nameEl && onPillTaken(dose.medicationId, nameEl)) {
+          setLanding((s) => new Set(s).add(key));
+          setTimeout(() => {
+            setLanding((s) => {
+              const next = new Set(s);
+              next.delete(key);
+              return next;
+            });
+          }, 700);
+        }
         await api.markTaken(dose.medicationId, dose.scheduledFor);
         onTaken(dose.medicationId, dose.scheduledFor);
       } else {
@@ -84,17 +106,17 @@ export function DueTodayPaper({ doses, medications, onTaken, onUntaken }: Props)
           {[...doses]
             .sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor))
             .map((dose) => {
+              const key = doseKey(dose);
               const med = medications.find((m) => m.id === dose.medicationId);
               const name = med?.name ?? dose.medicationId;
               const isTaken = dose.takenAt !== null;
               const isBusy = pending.has(dose.scheduledFor);
               const isUpcoming = !isTaken && dose.scheduledFor > now;
+              // The pill lying on the paper once it has dropped in.
+              const showLandedPill = isTaken && !landing.has(key);
 
               return (
-                <li
-                  key={`${dose.medicationId}-${dose.scheduledFor}`}
-                  className="border-b border-apothecary-parchment-line last:border-b-0"
-                >
+                <li key={key} className="border-b border-apothecary-parchment-line last:border-b-0">
                   <button
                     role="checkbox"
                     aria-checked={isTaken}
@@ -104,7 +126,13 @@ export function DueTodayPaper({ doses, medications, onTaken, onUntaken }: Props)
                     className="flex w-full items-center gap-3 py-2 text-left disabled:opacity-50"
                   >
                     <InkCheckbox checked={isTaken} />
-                    <span className={`relative font-hand text-xl ${isTaken ? 'opacity-60' : ''}`}>
+                    <span
+                      ref={(el) => {
+                        if (el) nameRefs.current.set(key, el);
+                        else nameRefs.current.delete(key);
+                      }}
+                      className={`relative font-hand text-xl ${isTaken ? 'opacity-60' : ''}`}
+                    >
                       {name}
                       <span
                         aria-hidden="true"
@@ -112,6 +140,16 @@ export function DueTodayPaper({ doses, medications, onTaken, onUntaken }: Props)
                         style={{ width: isTaken ? '100%' : '0%' }}
                       />
                     </span>
+                    {showLandedPill && (
+                      <span
+                        aria-hidden="true"
+                        className="h-3 w-3 shrink-0 rounded-full"
+                        style={{
+                          background: contentColorFor(name),
+                          border: '1px solid rgba(0, 0, 0, 0.25)',
+                        }}
+                      />
+                    )}
                     <span
                       className={`ml-auto font-hand text-lg ${
                         isUpcoming ? 'text-apothecary-ink-faded/70' : 'text-apothecary-ink-faded'
