@@ -1,7 +1,7 @@
 import { apothecary } from '@/theme/apothecary';
 import type { BottleData } from './bottleData';
 
-const { glass, ink, parchment, wood } = apothecary;
+const { glass, ink, parchment, wood, flame } = apothecary;
 
 interface Props {
   bottle: BottleData;
@@ -9,20 +9,60 @@ interface Props {
   // sits on, in ShelfUnit's coordinate space.
   x: number;
   shelfY: number;
+  selected: boolean;
+  onSelect: () => void;
+  onEdit: () => void;
 }
 
 // One glass bottle with a metal cap, a parchment label, and contents that
 // drain as pills are taken. Drawn in local coordinates (centre x = 0, base
 // y = 0) and translated into place, so ShelfUnit can lay bottles out freely.
-export function Bottle({ bottle, x, shelfY }: Props) {
+//
+// Interactions: click/tap or focus picks the bottle up off the shelf;
+// double-click, double-tap, or Enter/Space opens the edit form.
+export function Bottle({ bottle, x, shelfY, selected, onSelect, onEdit }: Props) {
   // The contents can occupy up to 76 of the body's 86 units, leaving a
   // little headroom below the shoulders like a real jar.
   const contentsHeight = Math.round(bottle.fill * 76);
   const pillWord = bottle.pillsRemaining === 1 ? 'pill' : 'pills';
 
   return (
-    <g transform={`translate(${x}, ${shelfY})`}>
+    <g
+      role="button"
+      tabIndex={0}
+      aria-label={`${bottle.name}, ${bottle.pillsRemaining} ${pillWord} left — press Enter to edit`}
+      className="cursor-pointer focus:outline-none"
+      // CSS transform (not the SVG attribute) so the lift animates, and
+      // touch-action so a double-tap edits instead of zooming on mobile.
+      style={{
+        transform: `translate(${x}px, ${shelfY - (selected ? 8 : 0)}px)`,
+        transition: 'transform 150ms ease-out',
+        touchAction: 'manipulation',
+      }}
+      onClick={onSelect}
+      onDoubleClick={onEdit}
+      onFocus={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onEdit();
+        }
+      }}
+    >
       <title>{`${bottle.name} — ${bottle.pillsRemaining} ${pillWord} left`}</title>
+      {selected && (
+        <rect
+          x="-38"
+          y="-117"
+          width="76"
+          height="121"
+          rx="10"
+          fill="none"
+          stroke={flame.core}
+          strokeOpacity="0.55"
+          strokeWidth="2.5"
+        />
+      )}
       {contentsHeight >= 1 && (
         <rect
           x="-32"

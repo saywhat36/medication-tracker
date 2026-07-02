@@ -129,6 +129,7 @@ export default function App() {
       <ShopView
         medications={medications}
         refillStatuses={refillStatuses}
+        onMedicationUpdated={handleMedicationUpdated}
         onSwitchToClassic={() => setView('classic')}
       />
     );
