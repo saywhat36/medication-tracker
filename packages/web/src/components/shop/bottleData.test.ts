@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Medication, RefillStatus } from '@medication-tracker/core';
 import { bottleContents } from '../../theme/apothecary.js';
-import { bottleFill, contentColorFor, toBottles } from './bottleData.js';
+import { contentColorFor, toBottles } from './bottleData.js';
 
 function med(overrides: Partial<Medication>): Medication {
   return {
@@ -27,27 +27,6 @@ function status(overrides: Partial<RefillStatus>): RefillStatus {
   };
 }
 
-describe('bottleFill', () => {
-  it('should return the remaining fraction of the pickup amount', () => {
-    expect(bottleFill(15, 30)).toBe(0.5);
-    expect(bottleFill(30, 30)).toBe(1);
-    expect(bottleFill(0, 30)).toBe(0);
-  });
-
-  it('should clamp to a full bottle when the count was bumped above the pickup amount', () => {
-    expect(bottleFill(45, 30)).toBe(1);
-  });
-
-  it('should clamp negatives to empty', () => {
-    expect(bottleFill(-3, 30)).toBe(0);
-  });
-
-  it('should treat a zero or negative pickup amount as empty rather than dividing by zero', () => {
-    expect(bottleFill(10, 0)).toBe(0);
-    expect(bottleFill(10, -1)).toBe(0);
-  });
-});
-
 describe('contentColorFor', () => {
   it('should always pick from the bottle contents palette', () => {
     for (const name of ['Fluoxetine', 'Quetiapine', 'Metformin', 'x', '']) {
@@ -69,14 +48,13 @@ describe('toBottles', () => {
       id: 'med-1',
       name: 'Fluoxetine',
       pillsRemaining: 15,
-      fill: 0.5,
     });
     expect(bottleContents).toContain(bottles[0]?.color);
   });
 
   it('should show an empty bottle when a medication has no refill status yet', () => {
     const bottles = toBottles([med({})], []);
-    expect(bottles[0]).toMatchObject({ pillsRemaining: 0, fill: 0 });
+    expect(bottles[0]).toMatchObject({ pillsRemaining: 0 });
   });
 
   it('should keep the medication order for stable shelf placement', () => {

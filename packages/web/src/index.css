@@ -60,3 +60,28 @@
   stroke-dasharray: 22;
   animation: ink-draw 300ms ease-out forwards;
 }
+
+/* The shop candle gutters when the mouse passes through the flame. */
+@keyframes candle-flicker {
+  0% {
+    transform: scaleY(1) scaleX(1) translateX(0);
+  }
+  40% {
+    transform: scaleY(1.18) scaleX(0.92) translateX(0.6px);
+  }
+  70% {
+    transform: scaleY(0.85) scaleX(1.08) translateX(-0.6px);
+  }
+  100% {
+    transform: scaleY(1.1) scaleX(0.95) translateX(0.4px);
+  }
+}
+
+.candle-flame {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.candle:hover .candle-flame {
+  animation: candle-flicker 160ms ease-in-out infinite alternate;
+}

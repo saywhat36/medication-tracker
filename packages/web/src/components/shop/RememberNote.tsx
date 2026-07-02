@@ -12,7 +12,6 @@ interface Entry {
   name: string;
   urgency: RefillUrgency;
   daysLeft: number;
-  refillDate: string;
   runOutDate: string;
 }
 
@@ -40,14 +39,16 @@ function countdown(entry: Entry): { text: string; className: string } {
   }
 }
 
-function reminder(entry: Entry): string {
+// Only urgent entries get a second line — a call to action, not a schedule.
+// (The reminder itself arrives by notification; no need to say when.)
+function reminder(entry: Entry): string | null {
   switch (entry.urgency) {
     case 'out':
       return 'visit the pharmacy today';
     case 'reorder-now':
       return `reorder now — runs out ${formatDay(entry.runOutDate)}`;
     default:
-      return `reorder by ${formatDay(entry.refillDate)}`;
+      return null;
   }
 }
 
@@ -79,7 +80,6 @@ export function RememberNote({ medications, statuses }: Props) {
         name: med?.name ?? s.medicationId,
         urgency: refillUrgency(s.daysUntilRefill, daysUntilRunOut),
         daysLeft: Math.max(0, daysUntilRunOut),
-        refillDate: s.refillDate,
         runOutDate: s.runOutDate,
       };
     })
@@ -96,15 +96,18 @@ export function RememberNote({ medications, statuses }: Props) {
       <ul className="space-y-2.5">
         {entries.map((entry) => {
           const { text, className } = countdown(entry);
+          const action = reminder(entry);
           return (
             <li key={entry.id}>
               <div className="flex items-baseline justify-between gap-3">
                 <span className="font-hand text-xl">{entry.name}</span>
                 <span className={`font-hand text-xl ${className}`}>{text}</span>
               </div>
-              <p className="font-hand text-base leading-tight text-apothecary-ink-faded">
-                {reminder(entry)}
-              </p>
+              {action && (
+                <p className="font-hand text-base leading-tight text-apothecary-ink-faded">
+                  {action}
+                </p>
+              )}
             </li>
           );
         })}

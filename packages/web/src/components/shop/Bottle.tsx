@@ -14,20 +14,40 @@ interface Props {
   onEdit: () => void;
 }
 
-// One glass bottle with a metal cap, a parchment label, and contents that
-// drain as pills are taken. Drawn in local coordinates (centre x = 0, base
-// y = 0) and translated into place, so ShelfUnit can lay bottles out freely.
+// How the pills sit in the jar: rows of five and four alternating, stacked
+// from the bottom, up to the bottle's shoulders. Beyond 32 the jar simply
+// looks full — like a real bottle, you can't see past the front layer.
+const PILL_RADIUS = 5;
+const MAX_VISIBLE_PILLS = 32;
+
+function pillPositions(count: number): { cx: number; cy: number }[] {
+  const positions: { cx: number; cy: number }[] = [];
+  let row = 0;
+  while (positions.length < Math.min(count, MAX_VISIBLE_PILLS)) {
+    const cols = row % 2 === 0 ? [-24, -12, 0, 12, 24] : [-18, -6, 6, 18];
+    const cy = -10 - row * 10.5;
+    for (const cx of cols) {
+      if (positions.length >= Math.min(count, MAX_VISIBLE_PILLS)) break;
+      positions.push({ cx, cy });
+    }
+    row += 1;
+  }
+  return positions;
+}
+
+// One glass bottle with a metal cap, a parchment label, and the actual pills
+// stacked inside — the jar empties pill by pill as doses are taken. Drawn in
+// local coordinates (centre x = 0, base y = 0) and translated into place, so
+// ShelfUnit can lay bottles out freely.
 //
 // Interactions: click/tap or focus picks the bottle up off the shelf;
 // double-click, double-tap, or Enter/Space opens the edit form.
 export function Bottle({ bottle, x, shelfY, selected, onSelect, onEdit }: Props) {
-  // The contents can occupy up to 76 of the body's 86 units, leaving a
-  // little headroom below the shoulders like a real jar.
-  const contentsHeight = Math.round(bottle.fill * 76);
   const pillWord = bottle.pillsRemaining === 1 ? 'pill' : 'pills';
 
   return (
     <g
+      data-bottle-id={bottle.id}
       role="button"
       tabIndex={0}
       aria-label={`${bottle.name}, ${bottle.pillsRemaining} ${pillWord} left — press Enter to edit`}
@@ -63,16 +83,17 @@ export function Bottle({ bottle, x, shelfY, selected, onSelect, onEdit }: Props)
           strokeWidth="2.5"
         />
       )}
-      {contentsHeight >= 1 && (
-        <rect
-          x="-32"
-          y={-4 - contentsHeight}
-          width="64"
-          height={contentsHeight}
-          rx={Math.min(5, contentsHeight / 2)}
+      {pillPositions(bottle.pillsRemaining).map(({ cx, cy }, i) => (
+        <circle
+          key={i}
+          cx={cx}
+          cy={cy}
+          r={PILL_RADIUS}
           fill={bottle.color}
+          stroke="#000000"
+          strokeOpacity="0.2"
         />
-      )}
+      ))}
       <rect
         x="-34"
         y="-86"
