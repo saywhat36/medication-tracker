@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
+import { isEveningNow } from '@/lib/evening';
+import { useMediaQuery } from '@/lib/useMediaQuery';
+import { AddBottleModal } from './AddBottleModal';
 import { DueTodayPaper } from './DueTodayPaper';
 import { EditBottleModal } from './EditBottleModal';
 import { Parchment } from './Parchment';
@@ -13,6 +16,7 @@ interface Props {
   doses: Dose[];
   onDoseTaken: (medicationId: string, scheduledFor: string) => void;
   onDoseUntaken: (medicationId: string, scheduledFor: string) => void;
+  onMedicationAdded: (med: Medication) => void;
   onMedicationUpdated: () => void;
   onSwitchToClassic: () => void;
 }
@@ -27,11 +31,15 @@ export function ShopView({
   doses,
   onDoseTaken,
   onDoseUntaken,
+  onMedicationAdded,
   onMedicationUpdated,
   onSwitchToClassic,
 }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const compact = useMediaQuery('(max-width: 640px)');
+  const evening = isEveningNow();
 
   const bottles = toBottles(medications, refillStatuses);
 
@@ -108,6 +116,8 @@ export function ShopView({
             selectedId={selectedId}
             onSelect={setSelectedId}
             onEdit={(id) => setEditingId(id)}
+            compact={compact}
+            evening={evening}
           />
           <p className="mt-1 min-h-[1.75rem] text-center font-hand text-lg text-apothecary-parchment-edge">
             {selected ? (
@@ -128,9 +138,12 @@ export function ShopView({
           {bottles.length === 0 ? (
             <Parchment className="text-center">
               <p className="font-apothecary text-lg tracking-widest">THE SHELVES ARE BARE</p>
-              <p className="font-hand text-xl text-apothecary-ink-faded mt-1">
-                Add your first medication in classic view and a bottle will appear.
-              </p>
+              <button
+                onClick={() => setAdding(true)}
+                className="mt-1 font-hand text-xl text-apothecary-ink underline decoration-dotted underline-offset-4 hover:text-apothecary-ink-faded"
+              >
+                stock your first bottle
+              </button>
             </Parchment>
           ) : (
             <div className="grid items-start gap-5 sm:grid-cols-2">
@@ -140,11 +153,23 @@ export function ShopView({
                 onTaken={onDoseTaken}
                 onUntaken={onDoseUntaken}
                 onPillTaken={flyPill}
+                evening={evening}
               />
               <RememberNote medications={medications} statuses={refillStatuses} />
             </div>
           )}
         </div>
+
+        {bottles.length > 0 && (
+          <p className="text-center">
+            <button
+              onClick={() => setAdding(true)}
+              className="font-hand text-lg text-apothecary-parchment-edge underline hover:text-apothecary-parchment-light"
+            >
+              + stock a new bottle
+            </button>
+          </p>
+        )}
       </div>
 
       {editing && (
@@ -156,6 +181,15 @@ export function ShopView({
             onMedicationUpdated();
           }}
           onClose={() => setEditingId(null)}
+        />
+      )}
+      {adding && (
+        <AddBottleModal
+          onAdded={(med) => {
+            setAdding(false);
+            onMedicationAdded(med);
+          }}
+          onClose={() => setAdding(false)}
         />
       )}
     </div>

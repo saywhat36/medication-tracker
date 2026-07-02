@@ -85,3 +85,34 @@
 .candle:hover .candle-flame {
   animation: candle-flicker 160ms ease-in-out infinite alternate;
 }
+
+/* The DISPENSED stamp thumping down when the day's last dose is ticked. */
+@keyframes stamp-thunk {
+  0% {
+    transform: scale(2.2) rotate(-12deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(0.92) rotate(-12deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(-12deg);
+    opacity: 1;
+  }
+}
+
+.stamp-thunk {
+  animation: stamp-thunk 280ms ease-in forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stamp-thunk,
+  .candle:hover .candle-flame,
+  .ink-draw {
+    animation: none;
+  }
+  .stamp-thunk {
+    transform: rotate(-12deg);
+  }
+}

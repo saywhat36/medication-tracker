@@ -17,6 +17,8 @@ interface Props {
   // beside. Returns true if a flight animation actually started, so the
   // landed pill can be held back until it arrives.
   onPillTaken?: (medicationId: string, nameEl: HTMLElement) => boolean;
+  // After dusk, upcoming doses shimmer with candlelight.
+  evening?: boolean;
 }
 
 // A hand-drawn tick box: parchment-cream fill, ink border, and a quill-ink
@@ -52,7 +54,14 @@ function InkCheckbox({ checked }: { checked: boolean }) {
 // The due-today sheet on the counter: today's doses as a handwritten
 // checklist. Ticking goes through the same markTaken/markUntaken flow as
 // classic view — early ticks allowed, "upcoming" is just a hint.
-export function DueTodayPaper({ doses, medications, onTaken, onUntaken, onPillTaken }: Props) {
+export function DueTodayPaper({
+  doses,
+  medications,
+  onTaken,
+  onUntaken,
+  onPillTaken,
+  evening,
+}: Props) {
   const [pending, setPending] = useState<Set<string>>(new Set());
   // Doses whose pill is still mid-flight — the landed pill waits for it.
   const [landing, setLanding] = useState<Set<string>>(new Set());
@@ -92,9 +101,22 @@ export function DueTodayPaper({ doses, medications, onTaken, onUntaken, onPillTa
   }
 
   const now = new Date().toISOString();
+  // Every dose ticked and none still landing — the day is dispensed.
+  const allDone = doses.length > 0 && doses.every((d) => d.takenAt !== null) && landing.size === 0;
 
   return (
-    <Parchment tone="paper" className="rotate-1">
+    <Parchment tone="paper" className="relative rotate-1">
+      {allDone && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <span
+            role="img"
+            aria-label="All of today's doses are taken"
+            className="stamp-thunk rounded border-4 border-apothecary-wax-red/60 px-3 py-1 font-apothecary text-3xl tracking-[0.2em] text-apothecary-wax-red/60"
+          >
+            DISPENSED
+          </span>
+        </div>
+      )}
       <p className="text-center font-apothecary text-lg italic">Due today</p>
       <div className="mx-auto mt-1 mb-3 w-16 border-b border-apothecary-parchment-edge" />
       {doses.length === 0 ? (
@@ -153,7 +175,7 @@ export function DueTodayPaper({ doses, medications, onTaken, onUntaken, onPillTa
                     <span
                       className={`ml-auto font-hand text-lg ${
                         isUpcoming ? 'text-apothecary-ink-faded/70' : 'text-apothecary-ink-faded'
-                      }`}
+                      } ${isUpcoming && evening ? '[text-shadow:0_0_10px_rgba(232,163,61,0.9)]' : ''}`}
                     >
                       {localHHMM(dose.scheduledFor)}
                       {isUpcoming ? ' · upcoming' : ''}

@@ -132,6 +132,7 @@ export default function App() {
         doses={dueDoses}
         onDoseTaken={handleTaken}
         onDoseUntaken={handleUntaken}
+        onMedicationAdded={handleMedicationAdded}
         onMedicationUpdated={handleMedicationUpdated}
         onSwitchToClassic={() => setView('classic')}
       />
