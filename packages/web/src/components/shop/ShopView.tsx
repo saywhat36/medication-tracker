@@ -1,14 +1,19 @@
+import type { Medication, RefillStatus } from '@medication-tracker/core';
 import { Parchment } from './Parchment';
 import { ShelfUnit } from './ShelfUnit';
+import { toBottles } from './bottleData';
 
 interface Props {
+  medications: Medication[];
+  refillStatuses: RefillStatus[];
   onSwitchToClassic: () => void;
 }
 
-// The apothecary shop dashboard. This MR lays the scene — wall, cabinet,
-// counter, papers area — and later MRs stock it: bottles (MR 2), bottle
-// editing (MR 3), the REMEMBER note (MR 4), and the due-today paper (MR 5).
-export function ShopView({ onSwitchToClassic }: Props) {
+// The apothecary shop dashboard. The cabinet is stocked with one bottle per
+// medication; later MRs make the bottles editable (MR 3) and lay the REMEMBER
+// note (MR 4) and due-today paper (MR 5) on the counter.
+export function ShopView({ medications, refillStatuses, onSwitchToClassic }: Props) {
+  const bottles = toBottles(medications, refillStatuses);
   const today = new Date().toLocaleDateString(undefined, {
     weekday: 'long',
     month: 'long',
@@ -33,14 +38,22 @@ export function ShopView({ onSwitchToClassic }: Props) {
           </button>
         </header>
 
-        <ShelfUnit />
+        <ShelfUnit bottles={bottles} />
 
         <div className="rounded-sm bg-apothecary-wood-counter p-5 sm:p-8">
           <Parchment className="text-center">
-            <p className="font-apothecary text-lg tracking-widest">OPENING SOON</p>
-            <p className="font-hand text-xl text-apothecary-ink-faded mt-1">
-              The shelves are being stocked — your bottles arrive in the next update.
-            </p>
+            {bottles.length === 0 ? (
+              <>
+                <p className="font-apothecary text-lg tracking-widest">THE SHELVES ARE BARE</p>
+                <p className="font-hand text-xl text-apothecary-ink-faded mt-1">
+                  Add your first medication in classic view and a bottle will appear.
+                </p>
+              </>
+            ) : (
+              <p className="font-hand text-xl text-apothecary-ink-faded">
+                The shopkeeper&apos;s papers arrive with the next updates.
+              </p>
+            )}
           </Parchment>
         </div>
       </div>

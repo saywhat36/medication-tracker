@@ -125,7 +125,13 @@ export default function App() {
   }
 
   if (view === 'shop') {
-    return <ShopView onSwitchToClassic={() => setView('classic')} />;
+    return (
+      <ShopView
+        medications={medications}
+        refillStatuses={refillStatuses}
+        onSwitchToClassic={() => setView('classic')}
+      />
+    );
   }
 
   const pendingDoses = dueDoses.filter((d) => d.takenAt === null);

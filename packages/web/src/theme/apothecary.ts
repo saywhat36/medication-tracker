@@ -39,3 +39,17 @@ export const apothecary = {
     core: '#F6D06B',
   },
 } as const;
+
+// What's inside the bottles — muted jewel tones like dried herbs and berries.
+// Kept outside the tailwind-registered object (it's an array, not a color map);
+// each medication is assigned one deterministically by name.
+export const bottleContents = [
+  '#7B6BA8', // lavender
+  '#5C3040', // dried berry
+  '#7C8A45', // hops green
+  '#C9A94E', // chamomile
+  '#93402C', // dried chili
+  '#4E6E62', // eucalyptus
+  '#6E4A2F', // cinnamon bark
+  '#566178', // juniper slate
+] as const;
