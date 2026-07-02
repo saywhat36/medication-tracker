@@ -1,24 +1,30 @@
 import type { Medication, RefillStatus } from '@medication-tracker/core';
 import { Badge } from '@/components/ui/badge';
+import { refillUrgency } from '@/refillUrgency';
 
 interface Props {
   statuses: RefillStatus[];
   medications: Medication[];
 }
 
-// daysUntilRefill counts down to the reorder deadline (runs-out minus your lead
-// time) and drives urgency; daysUntilRunOut is the actual days of supply left
-// and is what's shown, so the badge reads as "how many pills do I have" rather
-// than "how soon is the reminder".
+// The badge shows days of supply left (daysUntilRunOut) so it reads as "how
+// many pills do I have"; urgency comes from the shared thresholds in
+// refillUrgency, keyed off the reorder deadline.
 function refillLabel(
   daysUntilRefill: number,
   daysUntilRunOut: number
 ): { text: string; variant: 'destructive' | 'warning' | 'default' } {
   const daysLeft = Math.max(0, daysUntilRunOut);
-  if (daysUntilRunOut <= 0) return { text: 'Out of pills', variant: 'destructive' };
-  if (daysUntilRefill <= 0) return { text: `${daysLeft}d left — reorder now`, variant: 'destructive' };
-  if (daysUntilRefill <= 7) return { text: `${daysLeft}d left — order soon`, variant: 'warning' };
-  return { text: `${daysLeft} days left`, variant: 'default' };
+  switch (refillUrgency(daysUntilRefill, daysUntilRunOut)) {
+    case 'out':
+      return { text: 'Out of pills', variant: 'destructive' };
+    case 'reorder-now':
+      return { text: `${daysLeft}d left — reorder now`, variant: 'destructive' };
+    case 'order-soon':
+      return { text: `${daysLeft}d left — order soon`, variant: 'warning' };
+    case 'ok':
+      return { text: `${daysLeft} days left`, variant: 'default' };
+  }
 }
 
 // Format an ISO date (YYYY-MM-DD) as e.g. "25 Jul 2026", anchored to UTC so the
