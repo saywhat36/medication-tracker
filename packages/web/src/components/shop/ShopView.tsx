@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { Medication, RefillStatus } from '@medication-tracker/core';
+import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
+import { DueTodayPaper } from './DueTodayPaper';
 import { EditBottleModal } from './EditBottleModal';
 import { Parchment } from './Parchment';
 import { RememberNote } from './RememberNote';
@@ -9,6 +10,9 @@ import { toBottles } from './bottleData';
 interface Props {
   medications: Medication[];
   refillStatuses: RefillStatus[];
+  doses: Dose[];
+  onDoseTaken: (medicationId: string, scheduledFor: string) => void;
+  onDoseUntaken: (medicationId: string, scheduledFor: string) => void;
   onMedicationUpdated: () => void;
   onSwitchToClassic: () => void;
 }
@@ -20,6 +24,9 @@ interface Props {
 export function ShopView({
   medications,
   refillStatuses,
+  doses,
+  onDoseTaken,
+  onDoseUntaken,
   onMedicationUpdated,
   onSwitchToClassic,
 }: Props) {
@@ -85,7 +92,15 @@ export function ShopView({
               </p>
             </Parchment>
           ) : (
-            <RememberNote medications={medications} statuses={refillStatuses} />
+            <div className="grid items-start gap-5 sm:grid-cols-2">
+              <DueTodayPaper
+                doses={doses}
+                medications={medications}
+                onTaken={onDoseTaken}
+                onUntaken={onDoseUntaken}
+              />
+              <RememberNote medications={medications} statuses={refillStatuses} />
+            </div>
           )}
         </div>
       </div>

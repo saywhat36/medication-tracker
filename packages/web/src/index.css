@@ -43,3 +43,20 @@
   transform-origin: center;
   animation: pill-pop 600ms ease-out forwards;
 }
+
+/* The ink checkmark drawing itself when a dose is ticked on the shop's
+   due-today paper. Dasharray is a touch longer than the path, so it starts
+   fully hidden and sweeps in. */
+@keyframes ink-draw {
+  from {
+    stroke-dashoffset: 22;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.ink-draw {
+  stroke-dasharray: 22;
+  animation: ink-draw 300ms ease-out forwards;
+}

@@ -90,7 +90,7 @@ export function RememberNote({ medications, statuses }: Props) {
   const worst = entries[0]?.urgency ?? 'ok';
 
   return (
-    <Parchment className="-rotate-1 mx-auto max-w-md">
+    <Parchment className="-rotate-1">
       <p className="text-center font-apothecary text-lg tracking-[0.25em]">REMEMBER</p>
       <div className="mx-auto mt-1 mb-3 w-24 border-b border-apothecary-parchment-edge" />
       <ul className="space-y-2.5">

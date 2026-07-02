@@ -1,16 +1,7 @@
 import { useState } from 'react';
 import type { Dose, Medication } from '@medication-tracker/core';
 import { api } from '@/api';
-
-// A dose's scheduledFor is a true UTC instant; show/edit it in the browser's
-// local time (HH:MM) so it matches the timezone the times were entered in.
-function localHHMM(iso: string): string {
-  return new Date(iso).toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  });
-}
+import { localHHMM } from '@/lib/time';
 
 interface Props {
   doses: Dose[];
