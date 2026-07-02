@@ -10,6 +10,8 @@
     "typecheck": "tsc -p tsconfig.app.json --noEmit"
   },
   "dependencies": {
+    "@fontsource/caveat": "^5.2.8",
+    "@fontsource/im-fell-english": "^5.2.6",
     "@medication-tracker/core": "*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

@@ -8,6 +8,8 @@ import { LoginForm } from '@/components/LoginForm';
 import { MedicationList } from '@/components/MedicationList';
 import { PillJar } from '@/components/PillJar';
 import { RefillList } from '@/components/RefillList';
+import { ShopView } from '@/components/shop/ShopView';
+import { useViewMode } from '@/view';
 
 export default function App() {
   const [medications, setMedications] = useState<Medication[]>([]);
@@ -16,6 +18,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [needsLogin, setNeedsLogin] = useState(false);
+  const [view, setView] = useViewMode();
 
   const load = useCallback(() => {
     setLoading(true);
@@ -121,15 +124,27 @@ export default function App() {
     );
   }
 
+  if (view === 'shop') {
+    return <ShopView onSwitchToClassic={() => setView('classic')} />;
+  }
+
   const pendingDoses = dueDoses.filter((d) => d.takenAt === null);
 
   return (
     <div className="mx-auto max-w-sm p-4 space-y-6">
-      <header>
-        <h1 className="text-lg font-semibold tracking-tight">Medication Tracker</h1>
-        <p className="text-xs text-muted-foreground">
-          {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-        </p>
+      <header className="flex items-start justify-between">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight">Medication Tracker</h1>
+          <p className="text-xs text-muted-foreground">
+            {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+          </p>
+        </div>
+        <button
+          onClick={() => setView('shop')}
+          className="text-xs text-muted-foreground underline hover:text-foreground"
+        >
+          Shop view
+        </button>
       </header>
 
       <section>
