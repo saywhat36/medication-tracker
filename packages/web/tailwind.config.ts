@@ -1,11 +1,19 @@
 import type { Config } from 'tailwindcss';
+import { apothecary } from './src/theme/apothecary';
 
 const config: Config = {
   darkMode: ['class'],
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        // Old-print serif for shop headings and bottle labels.
+        apothecary: ['"IM Fell English"', 'Georgia', 'serif'],
+        // Handwritten script for the parchment notes.
+        hand: ['Caveat', 'cursive'],
+      },
       colors: {
+        apothecary,
         border: 'hsl(var(--border))',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
