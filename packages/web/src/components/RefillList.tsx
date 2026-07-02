@@ -6,11 +6,19 @@ interface Props {
   medications: Medication[];
 }
 
-function refillLabel(days: number): { text: string; variant: 'destructive' | 'warning' | 'default' } {
-  if (days < 0) return { text: 'Reorder now', variant: 'destructive' };
-  if (days === 0) return { text: 'Order today', variant: 'destructive' };
-  if (days <= 7) return { text: `${days}d — order soon`, variant: 'warning' };
-  return { text: `${days} days`, variant: 'default' };
+// daysUntilRefill counts down to the reorder deadline (runs-out minus your lead
+// time) and drives urgency; daysUntilRunOut is the actual days of supply left
+// and is what's shown, so the badge reads as "how many pills do I have" rather
+// than "how soon is the reminder".
+function refillLabel(
+  daysUntilRefill: number,
+  daysUntilRunOut: number
+): { text: string; variant: 'destructive' | 'warning' | 'default' } {
+  const daysLeft = Math.max(0, daysUntilRunOut);
+  if (daysUntilRunOut <= 0) return { text: 'Out of pills', variant: 'destructive' };
+  if (daysUntilRefill <= 0) return { text: `${daysLeft}d left — reorder now`, variant: 'destructive' };
+  if (daysUntilRefill <= 7) return { text: `${daysLeft}d left — order soon`, variant: 'warning' };
+  return { text: `${daysLeft} days left`, variant: 'default' };
 }
 
 // Format an ISO date (YYYY-MM-DD) as e.g. "25 Jul 2026", anchored to UTC so the
@@ -29,7 +37,8 @@ export function RefillList({ statuses, medications }: Props) {
     <ul className="space-y-2">
       {statuses.map((s) => {
         const med = medications.find((m) => m.id === s.medicationId);
-        const { text, variant } = refillLabel(s.daysUntilRefill);
+        const daysUntilRunOut = s.daysUntilRefill + (med?.refillLeadTimeDays ?? 0);
+        const { text, variant } = refillLabel(s.daysUntilRefill, daysUntilRunOut);
 
         return (
           <li key={s.medicationId} className="rounded-lg border px-4 py-3">
