@@ -44,6 +44,13 @@ function pillPositions(count: number): { cx: number; cy: number }[] {
 // double-click, double-tap, or Enter/Space opens the edit form.
 export function Bottle({ bottle, x, shelfY, selected, onSelect, onEdit }: Props) {
   const pillWord = bottle.pillsRemaining === 1 ? 'pill' : 'pills';
+  // An empty bottle has tipped onto its side — much harder to ignore than a
+  // badge. Rotated about its base, then nudged so it rests on the shelf.
+  const empty = bottle.pillsRemaining <= 0;
+  const lift = selected ? 8 : 0;
+  const transform = empty
+    ? `translate(${x + 58}px, ${shelfY - 38 - lift}px) rotate(-90deg)`
+    : `translate(${x}px, ${shelfY - lift}px)`;
 
   return (
     <g
@@ -55,8 +62,8 @@ export function Bottle({ bottle, x, shelfY, selected, onSelect, onEdit }: Props)
       // CSS transform (not the SVG attribute) so the lift animates, and
       // touch-action so a double-tap edits instead of zooming on mobile.
       style={{
-        transform: `translate(${x}px, ${shelfY - (selected ? 8 : 0)}px)`,
-        transition: 'transform 150ms ease-out',
+        transform,
+        transition: 'transform 300ms ease-out',
         touchAction: 'manipulation',
       }}
       onClick={onSelect}
