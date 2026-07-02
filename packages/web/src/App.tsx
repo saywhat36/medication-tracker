@@ -129,6 +129,9 @@ export default function App() {
       <ShopView
         medications={medications}
         refillStatuses={refillStatuses}
+        doses={dueDoses}
+        onDoseTaken={handleTaken}
+        onDoseUntaken={handleUntaken}
         onMedicationUpdated={handleMedicationUpdated}
         onSwitchToClassic={() => setView('classic')}
       />
