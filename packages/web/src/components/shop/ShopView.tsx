@@ -18,6 +18,7 @@ interface Props {
   onDoseUntaken: (medicationId: string, scheduledFor: string) => void;
   onMedicationAdded: (med: Medication) => void;
   onMedicationUpdated: () => void;
+  onMedicationDeleted: (id: string) => void;
   onSwitchToClassic: () => void;
 }
 
@@ -33,6 +34,7 @@ export function ShopView({
   onDoseUntaken,
   onMedicationAdded,
   onMedicationUpdated,
+  onMedicationDeleted,
   onSwitchToClassic,
 }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -179,6 +181,11 @@ export function ShopView({
           onSaved={() => {
             setEditingId(null);
             onMedicationUpdated();
+          }}
+          onDeleted={() => {
+            setEditingId(null);
+            setSelectedId(null);
+            onMedicationDeleted(editing.id);
           }}
           onClose={() => setEditingId(null)}
         />

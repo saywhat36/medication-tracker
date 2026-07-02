@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { Dose, Medication } from '@medication-tracker/core';
 import { api } from '@/api';
+import { doseKey } from '@/lib/doses';
 import { localHHMM } from '@/lib/time';
 import { apothecary } from '@/theme/apothecary';
 import { Parchment } from './Parchment';
@@ -67,11 +68,11 @@ export function DueTodayPaper({
   const [landing, setLanding] = useState<Set<string>>(new Set());
   const nameRefs = useRef(new Map<string, HTMLSpanElement>());
 
-  const doseKey = (dose: Dose) => `${dose.medicationId}-${dose.scheduledFor}`;
-
   async function handleToggle(dose: Dose) {
+    // Keyed by medication AND time — several medications can share a
+    // scheduled time, and per-dose state must not bleed across them.
     const key = doseKey(dose);
-    setPending((s) => new Set(s).add(dose.scheduledFor));
+    setPending((s) => new Set(s).add(key));
     try {
       if (dose.takenAt === null) {
         const nameEl = nameRefs.current.get(key);
@@ -94,7 +95,7 @@ export function DueTodayPaper({
     } finally {
       setPending((s) => {
         const next = new Set(s);
-        next.delete(dose.scheduledFor);
+        next.delete(key);
         return next;
       });
     }
@@ -132,7 +133,7 @@ export function DueTodayPaper({
               const med = medications.find((m) => m.id === dose.medicationId);
               const name = med?.name ?? dose.medicationId;
               const isTaken = dose.takenAt !== null;
-              const isBusy = pending.has(dose.scheduledFor);
+              const isBusy = pending.has(key);
               const isUpcoming = !isTaken && dose.scheduledFor > now;
               // The pill lying on the paper once it has dropped in.
               const showLandedPill = isTaken && !landing.has(key);
