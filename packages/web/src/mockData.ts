@@ -33,26 +33,42 @@ export const mockTodaysDoses: Dose[] = [
   { medicationId: 'med-2', scheduledFor: todayAt(21), takenAt: null },
 ];
 
+const dayMs = 24 * 60 * 60 * 1000;
+const isoDateFromNow = (daysAhead: number) =>
+  new Date(Date.now() + daysAhead * dayMs).toISOString().slice(0, 10);
+
+// Computed relative to today so the demo data never rots: static dates drift
+// out of agreement with the daysUntilRefill counts as real time passes.
 export const mockRefillStatuses: RefillStatus[] = [
-  { medicationId: 'med-1', pillsRemaining: 30, daysUntilRefill: 23, runOutDate: '2026-07-25', refillDate: '2026-07-18' },
-  // 4 pills at 1/day matches the run-out date 3 days away (and shows a
-  // part-drained bottle in the shop view).
-  { medicationId: 'med-2', pillsRemaining: 4, daysUntilRefill: 3, runOutDate: '2026-07-05', refillDate: '2026-06-28' },
+  // Metformin: comfortably stocked.
+  {
+    medicationId: 'med-1',
+    pillsRemaining: 30,
+    daysUntilRefill: 23,
+    runOutDate: isoDateFromNow(30),
+    refillDate: isoDateFromNow(23),
+  },
+  // Lisinopril: 4 days of pills at 1/day with a 7-day lead time — the reorder
+  // deadline has passed and the bottle is visibly drained.
+  {
+    medicationId: 'med-2',
+    pillsRemaining: 4,
+    daysUntilRefill: -3,
+    runOutDate: isoDateFromNow(4),
+    refillDate: isoDateFromNow(-3),
+  },
 ];
 
 // What the real API would compute for a medication whose pill count was just
 // (re)baselined — pillsAtPickup pills as of today.
 function freshStatus(med: Medication): RefillStatus {
   const daysOfSupply = Math.floor(med.pillsAtPickup / Math.max(1, med.dosesPerDay));
-  const dayMs = 24 * 60 * 60 * 1000;
-  const isoDate = (daysAhead: number) =>
-    new Date(Date.now() + daysAhead * dayMs).toISOString().slice(0, 10);
   return {
     medicationId: med.id,
     pillsRemaining: med.pillsAtPickup,
     daysUntilRefill: Math.max(0, daysOfSupply - med.refillLeadTimeDays),
-    runOutDate: isoDate(daysOfSupply),
-    refillDate: isoDate(Math.max(0, daysOfSupply - med.refillLeadTimeDays)),
+    runOutDate: isoDateFromNow(daysOfSupply),
+    refillDate: isoDateFromNow(Math.max(0, daysOfSupply - med.refillLeadTimeDays)),
   };
 }
 

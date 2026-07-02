@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Medication, RefillStatus } from '@medication-tracker/core';
 import { EditBottleModal } from './EditBottleModal';
 import { Parchment } from './Parchment';
+import { RememberNote } from './RememberNote';
 import { ShelfUnit } from './ShelfUnit';
 import { toBottles } from './bottleData';
 
@@ -76,20 +77,16 @@ export function ShopView({
         </div>
 
         <div className="rounded-sm bg-apothecary-wood-counter p-5 sm:p-8">
-          <Parchment className="text-center">
-            {bottles.length === 0 ? (
-              <>
-                <p className="font-apothecary text-lg tracking-widest">THE SHELVES ARE BARE</p>
-                <p className="font-hand text-xl text-apothecary-ink-faded mt-1">
-                  Add your first medication in classic view and a bottle will appear.
-                </p>
-              </>
-            ) : (
-              <p className="font-hand text-xl text-apothecary-ink-faded">
-                The shopkeeper&apos;s papers arrive with the next updates.
+          {bottles.length === 0 ? (
+            <Parchment className="text-center">
+              <p className="font-apothecary text-lg tracking-widest">THE SHELVES ARE BARE</p>
+              <p className="font-hand text-xl text-apothecary-ink-faded mt-1">
+                Add your first medication in classic view and a bottle will appear.
               </p>
-            )}
-          </Parchment>
+            </Parchment>
+          ) : (
+            <RememberNote medications={medications} statuses={refillStatuses} />
+          )}
         </div>
       </div>
 
