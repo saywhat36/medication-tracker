@@ -8,6 +8,7 @@ export interface Medication {
   refillLeadTimeDays: number;    // days before running out to reorder
   schedule: string[];            // times of day, 24h, e.g. ["08:00", "21:00"]
   recipientEmail?: string | null; // who takes this medication, for dose reminders (optional)
+  recipientName?: string | null;  // first name, used in companion emails, e.g. "Sarah needs to take..."
   companionEmails?: string[];     // others notified if a dose is missed (optional, default [])
 }
 

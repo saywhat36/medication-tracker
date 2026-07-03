@@ -44,6 +44,7 @@ export function MedicationForm({
   const [refillLeadTimeDays, setRefillLeadTimeDays] = useState(String(initial?.refillLeadTimeDays ?? 7));
   const [scheduleTime, setScheduleTime] = useState(initial?.schedule?.[0] ?? '09:00');
   const [recipientEmail, setRecipientEmail] = useState(initial?.recipientEmail ?? '');
+  const [recipientName, setRecipientName] = useState(initial?.recipientName ?? '');
   const [companionEmails, setCompanionEmails] = useState((initial?.companionEmails ?? []).join(', '));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +79,7 @@ export function MedicationForm({
         // When not editing the time, preserve the existing schedule.
         schedule: showTime ? [scheduleTime] : (initial?.schedule ?? [scheduleTime]),
         recipientEmail: recipientEmailTrimmed === '' ? null : recipientEmailTrimmed,
+        recipientName: recipientName.trim() === '' ? null : recipientName.trim(),
         companionEmails: parseEmailList(companionEmails),
       });
     } catch (err) {
@@ -152,6 +154,18 @@ export function MedicationForm({
       )}
 
       <div className="space-y-3 border-t border-border pt-3">
+        <label className="block space-y-1">
+          <span className="text-xs text-muted-foreground">
+            Recipient&rsquo;s first name <span className="italic">(optional)</span> — used in companion emails, e.g. &ldquo;Sarah needs to take&hellip;&rdquo;
+          </span>
+          <input
+            value={recipientName}
+            onChange={(e) => setRecipientName(e.target.value)}
+            placeholder="e.g. Sarah"
+            className={inputClass}
+          />
+        </label>
+
         <label className="block space-y-1">
           <span className="text-xs text-muted-foreground">
             Recipient&rsquo;s email <span className="italic">(optional)</span> — reminded when this is due
