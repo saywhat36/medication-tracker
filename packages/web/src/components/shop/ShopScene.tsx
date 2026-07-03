@@ -2,9 +2,10 @@ import type { SkyPhase } from '@/lib/skyPhase';
 import { apothecary } from '@/theme/apothecary';
 import { Bottle } from './Bottle';
 import { HangingFoliage } from './HangingFoliage';
+import { SceneDecor } from './SceneDecor';
 import { WindowView } from './WindowView';
 import type { BottleData } from './bottleData';
-import { sceneLayout, shelfRows } from './sceneLayout';
+import { sceneLayout, slotCenter } from './sceneLayout';
 
 const { wood, glass, flame } = apothecary;
 
@@ -24,8 +25,7 @@ interface Props {
 // bottles are the interactive medications; everything else is scenery.
 export function ShopScene({ bottles, selectedId, onSelect, onEdit, compact, evening, phase }: Props) {
   const layout = sceneLayout(bottles.length, compact ?? false);
-  const { width, height, cabinet, interiorX, interiorW, shelfYs, perShelf, tableY, candle } = layout;
-  const rows = shelfRows(bottles, perShelf);
+  const { width, height, cabinet, interiorX, interiorW, shelfYs, tableY, candle } = layout;
   const candleFlameY = candle.y - 56;
 
   const label =
@@ -67,25 +67,25 @@ export function ShopScene({ bottles, selectedId, onSelect, onEdit, compact, even
           <rect x={interiorX} y={y} width={interiorW} height="3" fill={wood['shelf-edge']} />
         </g>
       ))}
-      {rows.map((row, shelfIndex) =>
-        row.map((bottle, i) => {
-          const slotWidth = interiorW / row.length;
-          return (
-            <Bottle
-              key={bottle.id}
-              bottle={bottle}
-              x={Math.round(interiorX + slotWidth * (i + 0.5))}
-              shelfY={shelfYs[shelfIndex] ?? shelfYs[0] ?? 0}
-              selected={selectedId === bottle.id}
-              onSelect={() => onSelect(bottle.id)}
-              onEdit={() => onEdit(bottle.id)}
-            />
-          );
-        })
-      )}
+      {bottles.map((bottle, i) => {
+        const { x, shelfY } = slotCenter(layout, i);
+        return (
+          <Bottle
+            key={bottle.id}
+            bottle={bottle}
+            x={x}
+            shelfY={shelfY}
+            selected={selectedId === bottle.id}
+            onSelect={() => onSelect(bottle.id)}
+            onEdit={() => onEdit(bottle.id)}
+          />
+        );
+      })}
 
       <rect x="0" y={tableY} width={width} height={height - tableY} fill={wood['counter-top']} />
       <rect x="0" y={tableY} width={width} height="3" fill={wood['shelf-edge']} />
+
+      <SceneDecor layout={layout} bottleCount={bottles.length} />
 
       <g aria-hidden="true" className="candle">
         <ellipse cx={candle.x} cy={candle.y + 4} rx="17" ry="5" fill={glass.metal} />
