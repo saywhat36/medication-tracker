@@ -56,14 +56,40 @@ function PottedPlant({ cx, baseY }: { cx: number; baseY: number }) {
   );
 }
 
-// A little marigold-and-lavender sprig lying on the table.
-function Sprig({ cx, baseY, tip }: { cx: number; baseY: number; tip: string }) {
+// A little six-petal flower head, lying on the table — a proper flower shape
+// (ring of petals rotated around a coloured centre) rather than an
+// abstracted dot-and-stem sprig.
+function Flower({
+  cx,
+  cy,
+  petalFill,
+  centerFill,
+  size = 1,
+}: {
+  cx: number;
+  cy: number;
+  petalFill: string;
+  centerFill: string;
+  size?: number;
+}) {
+  const petalRx = 4.2 * size;
+  const petalRy = 6.4 * size;
+  const petalDist = 4.6 * size;
+  const angles = [0, 60, 120, 180, 240, 300];
   return (
     <g aria-hidden="true">
-      <path d={`M${cx - 14} ${baseY} Q${cx} ${baseY - 8} ${cx + 14} ${baseY - 2}`} fill="none" stroke="#5B7A4B" strokeWidth="2" strokeLinecap="round" />
-      <circle cx={cx - 14} cy={baseY} r="3.5" fill={tip} />
-      <circle cx={cx - 6} cy={baseY - 4} r="3" fill={tip} />
-      <circle cx={cx + 14} cy={baseY - 2} r="3.5" fill={tip} />
+      {angles.map((angle) => (
+        <ellipse
+          key={angle}
+          cx={cx}
+          cy={cy - petalDist}
+          rx={petalRx}
+          ry={petalRy}
+          fill={petalFill}
+          transform={`rotate(${angle} ${cx} ${cy})`}
+        />
+      ))}
+      <circle cx={cx} cy={cy} r={2.8 * size} fill={centerFill} />
     </g>
   );
 }
@@ -76,6 +102,16 @@ export function SceneDecor({ layout, bottleCount }: Props) {
   const free: number[] = [];
   for (let i = bottleCount; i < totalSlots(layout); i++) free.push(i);
 
+  // The plant, both honey jars, and the herb jar all sit on the same table
+  // line — mixing tableY and windowBox.sillY (only ~20px apart) used to put
+  // the plant almost on top of the first jar. Spacing four items evenly
+  // across the window's width keeps them clear of each other regardless of
+  // how wide the window ends up being (desktop vs compact).
+  const zoneLeft = windowBox.x + 20;
+  const zoneWidth = windowBox.w - 40;
+  const step = zoneWidth / 4;
+  const slotX = (i: number) => zoneLeft + step * (i + 0.5);
+
   return (
     <g aria-hidden="true">
       {free.map((slot, i) => {
@@ -83,14 +119,14 @@ export function SceneDecor({ layout, bottleCount }: Props) {
         return <HerbJar key={slot} cx={x} baseY={shelfY} fill={HERB_FILLS[i % HERB_FILLS.length] ?? HERB_FILLS[0]} />;
       })}
 
-      <HoneyJar cx={windowBox.x + 44} baseY={tableY} />
-      <HoneyJar cx={windowBox.x + 110} baseY={tableY} scale={0.82} />
-      <PottedPlant cx={windowBox.x + 34} baseY={windowBox.sillY} />
-      <HerbJar cx={windowBox.x + windowBox.w - 34} baseY={windowBox.sillY} fill="#D98E2B" />
+      <PottedPlant cx={slotX(0)} baseY={tableY} />
+      <HoneyJar cx={slotX(1)} baseY={tableY} scale={0.85} />
+      <HoneyJar cx={slotX(2)} baseY={tableY} scale={0.7} />
+      <HerbJar cx={slotX(3)} baseY={tableY} fill="#D98E2B" />
 
-      <Sprig cx={width * 0.12} baseY={tableY + 14} tip="#E8952F" />
-      <Sprig cx={width * 0.26} baseY={tableY + 18} tip="#9B7FB8" />
-      <Sprig cx={width * 0.4} baseY={tableY + 13} tip="#E8952F" />
+      <Flower cx={width * 0.1} cy={tableY + 15} petalFill="#F0A6C4" centerFill="#F9C74F" size={0.9} />
+      <Flower cx={width * 0.22} cy={tableY + 20} petalFill="#C9A0DC" centerFill="#F9C74F" size={0.75} />
+      <Flower cx={width * 0.34} cy={tableY + 13} petalFill="#F0A6C4" centerFill="#F9C74F" size={0.8} />
     </g>
   );
 }
