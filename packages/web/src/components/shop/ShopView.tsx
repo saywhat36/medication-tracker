@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
 import { isEveningNow } from '@/lib/evening';
+import { skyPhaseNow } from '@/lib/skyPhase';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { AddBottleModal } from './AddBottleModal';
 import { DueTodayPaper } from './DueTodayPaper';
@@ -42,6 +43,7 @@ export function ShopView({
   const [adding, setAdding] = useState(false);
   const compact = useMediaQuery('(max-width: 640px)');
   const evening = isEveningNow();
+  const phase = skyPhaseNow();
 
   const bottles = toBottles(medications, refillStatuses);
 
@@ -119,6 +121,7 @@ export function ShopView({
           onEdit={(id) => setEditingId(id)}
           compact={compact}
           evening={evening}
+          phase={phase}
         />
 
         {/* The table surface continues from the scene's table into this block,
