@@ -31,6 +31,11 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESEND_FROM_EMAIL: ${{ vars.RESEND_FROM_EMAIL }}
           NOTIFY_EMAIL: ${{ vars.NOTIFY_EMAIL }}
+          # Must be the exact same value as the API service's LINK_SIGNING_SECRET
+          # (Render) — this signs tap-to-take links, the API verifies them.
+          LINK_SIGNING_SECRET: ${{ secrets.LINK_SIGNING_SECRET }}
+          # The API's public URL, e.g. https://medication-tracker-api-s454.onrender.com
+          API_PUBLIC_URL: ${{ vars.API_PUBLIC_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           # Set an APP_TIMEZONE repo variable (e.g. Europe/London) for local-time

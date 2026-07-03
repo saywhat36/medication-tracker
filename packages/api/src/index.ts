@@ -5,3 +5,4 @@ export { PostgresMedicationRepository, createPgPool } from './postgresRepository
 export { runMigrations } from './migrate.js';
 export { createRepository } from './createRepository.js';
 export { createServer } from './server.js';
+export { signDoseToken, verifyDoseToken } from './doseToken.js';

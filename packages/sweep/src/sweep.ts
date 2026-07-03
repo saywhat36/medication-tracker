@@ -1,8 +1,42 @@
 import { isOverdue, formatInZone, dateInZone } from '@medication-tracker/core';
 import type { Medication } from '@medication-tracker/core';
+import { signDoseToken } from '@medication-tracker/api';
 import type { MedicationRepository } from '@medication-tracker/api';
 import type { Notifier } from './notifier.js';
 import type { EmailSender } from './emailSender.js';
+
+// How long a tap-to-take link stays valid — generous enough to cover a
+// genuinely late dose, without leaving very old email links live forever.
+const TAKE_LINK_EXPIRY_MS = 72 * 60 * 60 * 1000; // 3 days
+
+export interface TakeLinkOptions {
+  secret: string;
+  baseUrl: string; // the API's public origin, e.g. https://api.example.com (no trailing slash)
+}
+
+function takeLink(
+  medicationId: string,
+  scheduledFor: string,
+  opts: TakeLinkOptions,
+  nowMs: number
+): string {
+  const token = signDoseToken(medicationId, scheduledFor, nowMs + TAKE_LINK_EXPIRY_MS, opts.secret);
+  return `${opts.baseUrl}/take/${token}`;
+}
+
+// Appends a "mark as taken" link to a message body when link signing is
+// configured, so the reminder/missed emails are actionable from a phone lock
+// screen with no login. Omitted gracefully when unconfigured.
+function withTakeLink(
+  body: string,
+  medicationId: string,
+  scheduledFor: string,
+  linkOptions: TakeLinkOptions | undefined,
+  nowMs: number
+): string {
+  if (!linkOptions) return body;
+  return `${body}\n\nMark as taken: ${takeLink(medicationId, scheduledFor, linkOptions, nowMs)}`;
+}
 
 function doseKey(medicationId: string, scheduledFor: string): string {
   return `${medicationId}:${scheduledFor}`;
@@ -75,8 +109,10 @@ export async function runSweep(
   notifier: Notifier,
   now: string,
   timeZone = 'UTC',
-  emailSender?: EmailSender
+  emailSender?: EmailSender,
+  linkOptions?: TakeLinkOptions
 ): Promise<void> {
+  const nowMs = Date.parse(now);
   const notified = new Set(await repo.getNotifiedDoseKeys());
   const meds = await repo.listMedications();
   const medById = new Map(meds.map((m) => [m.id, m]));
@@ -96,9 +132,15 @@ export async function runSweep(
         emailSender,
         med,
         `Time to take your ${med.name}`,
-        `${med.name} is due now (${time}).`,
+        withTakeLink(`${med.name} is due now (${time}).`, dose.medicationId, dose.scheduledFor, linkOptions, nowMs),
         `Reminder: ${med.name} is due`,
-        `${name} needs to take ${med.name} — due ${time}.`
+        withTakeLink(
+          `${name} needs to take ${med.name} — due ${time}.`,
+          dose.medicationId,
+          dose.scheduledFor,
+          linkOptions,
+          nowMs
+        )
       );
       await repo.recordDoseNotified(key);
       notified.add(key);
@@ -118,9 +160,21 @@ export async function runSweep(
         emailSender,
         med,
         `You missed your ${med.name} dose`,
-        `${med.name} was due at ${time} and hasn't been marked taken.`,
+        withTakeLink(
+          `${med.name} was due at ${time} and hasn't been marked taken.`,
+          dose.medicationId,
+          dose.scheduledFor,
+          linkOptions,
+          nowMs
+        ),
         `${name} hasn't taken ${med.name} yet`,
-        `${name} hasn't taken ${med.name} yet — it was due at ${time}.`
+        withTakeLink(
+          `${name} hasn't taken ${med.name} yet — it was due at ${time}.`,
+          dose.medicationId,
+          dose.scheduledFor,
+          linkOptions,
+          nowMs
+        )
       );
     } else {
       const label = med?.name ?? dose.medicationId;

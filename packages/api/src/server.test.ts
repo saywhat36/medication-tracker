@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createServer } from './server.js';
 import { InMemoryMedicationRepository } from './inMemoryRepository.js';
+import { signDoseToken } from './doseToken.js';
 
 const MED = {
   id: 'med-1',
@@ -84,6 +85,77 @@ describe('auth (when API_TOKEN is configured)', () => {
       .get('/health')
       .set('Origin', 'https://example.github.io');
     expect(res.headers['access-control-allow-origin']).toBeDefined();
+  });
+});
+
+describe('GET /take/:token', () => {
+  const SECRET = 'test-link-secret';
+  const FUTURE_EXPIRY = Date.parse(FIXED_NOW) + 1000 * 60 * 60;
+
+  function makeLinkedApp() {
+    const repo = new InMemoryMedicationRepository([MED], [OVERDUE_DOSE, FUTURE_DOSE]);
+    return createServer(repo, () => FIXED_NOW, { linkSigningSecret: SECRET });
+  }
+
+  it('marks the dose taken and shows a confirmation page', async () => {
+    const app = makeLinkedApp();
+    const token = signDoseToken(OVERDUE_DOSE.medicationId, OVERDUE_DOSE.scheduledFor, FUTURE_EXPIRY, SECRET);
+    const res = await request(app).get(`/take/${token}`);
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('Marked as taken');
+    expect(res.text).toContain('Metformin');
+
+    const listRes = await request(app).get('/doses/due');
+    expect(listRes.body.some((d: { scheduledFor: string }) => d.scheduledFor === OVERDUE_DOSE.scheduledFor)).toBe(
+      false
+    ); // no longer due, since it's now taken
+  });
+
+  it('shows "already taken" without erroring when tapped twice', async () => {
+    const app = makeLinkedApp();
+    const token = signDoseToken(OVERDUE_DOSE.medicationId, OVERDUE_DOSE.scheduledFor, FUTURE_EXPIRY, SECRET);
+    await request(app).get(`/take/${token}`);
+    const res = await request(app).get(`/take/${token}`);
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('Already taken');
+  });
+
+  it('rejects a token signed with the wrong secret', async () => {
+    const app = makeLinkedApp();
+    const token = signDoseToken(OVERDUE_DOSE.medicationId, OVERDUE_DOSE.scheduledFor, FUTURE_EXPIRY, 'wrong-secret');
+    const res = await request(app).get(`/take/${token}`);
+    expect(res.status).toBe(400);
+    expect(res.text).toContain('expired');
+  });
+
+  it('rejects an expired token', async () => {
+    const app = makeLinkedApp();
+    const pastExpiry = Date.parse(FIXED_NOW) - 1000;
+    const token = signDoseToken(OVERDUE_DOSE.medicationId, OVERDUE_DOSE.scheduledFor, pastExpiry, SECRET);
+    const res = await request(app).get(`/take/${token}`);
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a garbage token without crashing', async () => {
+    const app = makeLinkedApp();
+    const res = await request(app).get('/take/not-a-real-token');
+    expect(res.status).toBe(400);
+  });
+
+  it('is 404 when LINK_SIGNING_SECRET is not configured', async () => {
+    const repo = new InMemoryMedicationRepository([MED], [OVERDUE_DOSE]);
+    const app = createServer(repo, () => FIXED_NOW); // no linkSigningSecret
+    const token = signDoseToken(OVERDUE_DOSE.medicationId, OVERDUE_DOSE.scheduledFor, FUTURE_EXPIRY, SECRET);
+    const res = await request(app).get(`/take/${token}`);
+    expect(res.status).toBe(404);
+  });
+
+  it('does not require the bearer token, even when API auth is configured', async () => {
+    const repo = new InMemoryMedicationRepository([MED], [OVERDUE_DOSE]);
+    const app = createServer(repo, () => FIXED_NOW, { linkSigningSecret: SECRET, apiToken: 'secret-token' });
+    const token = signDoseToken(OVERDUE_DOSE.medicationId, OVERDUE_DOSE.scheduledFor, FUTURE_EXPIRY, SECRET);
+    const res = await request(app).get(`/take/${token}`); // no Authorization header
+    expect(res.status).toBe(200);
   });
 });
 
