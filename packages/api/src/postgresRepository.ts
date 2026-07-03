@@ -46,9 +46,20 @@ export class PostgresMedicationRepository implements MedicationRepository {
 
   async addMedication(med: Medication): Promise<void> {
     await this.pool.query(
-      `INSERT INTO medications (id, name, pills_at_pickup, last_pickup_date, prior_doses_taken, doses_per_day, refill_lead_time_days, schedule)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [med.id, med.name, med.pillsAtPickup, med.lastPickupDate, med.priorDosesTaken ?? 0, med.dosesPerDay, med.refillLeadTimeDays, JSON.stringify(med.schedule)]
+      `INSERT INTO medications (id, name, pills_at_pickup, last_pickup_date, prior_doses_taken, doses_per_day, refill_lead_time_days, schedule, recipient_email, companion_emails)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [
+        med.id,
+        med.name,
+        med.pillsAtPickup,
+        med.lastPickupDate,
+        med.priorDosesTaken ?? 0,
+        med.dosesPerDay,
+        med.refillLeadTimeDays,
+        JSON.stringify(med.schedule),
+        med.recipientEmail ?? null,
+        JSON.stringify(med.companionEmails ?? []),
+      ]
     );
   }
 
@@ -62,7 +73,7 @@ export class PostgresMedicationRepository implements MedicationRepository {
 
   async updateMedication(med: Medication): Promise<void> {
     const result = await this.pool.query(
-      `UPDATE medications SET name = $1, pills_at_pickup = $2, last_pickup_date = $3, prior_doses_taken = $4, doses_per_day = $5, refill_lead_time_days = $6, schedule = $7 WHERE id = $8`,
+      `UPDATE medications SET name = $1, pills_at_pickup = $2, last_pickup_date = $3, prior_doses_taken = $4, doses_per_day = $5, refill_lead_time_days = $6, schedule = $7, recipient_email = $8, companion_emails = $9 WHERE id = $10`,
       [
         med.name,
         med.pillsAtPickup,
@@ -71,6 +82,8 @@ export class PostgresMedicationRepository implements MedicationRepository {
         med.dosesPerDay,
         med.refillLeadTimeDays,
         JSON.stringify(med.schedule),
+        med.recipientEmail ?? null,
+        JSON.stringify(med.companionEmails ?? []),
         med.id,
       ]
     );
@@ -191,6 +204,8 @@ function toMedication(row: Record<string, unknown>): Medication {
     dosesPerDay: Number(row['doses_per_day']),
     refillLeadTimeDays: Number(row['refill_lead_time_days']),
     schedule: JSON.parse(row['schedule'] as string) as string[],
+    recipientEmail: (row['recipient_email'] as string | null) ?? null,
+    companionEmails: JSON.parse((row['companion_emails'] as string | null) ?? '[]') as string[],
   };
 }
 

@@ -71,6 +71,8 @@ export function createServer(
         dosesPerDay: number;
         refillLeadTimeDays: number;
         schedule: string[];
+        recipientEmail?: string | null;
+        companionEmails?: string[];
       };
       const med = { id: randomUUID(), priorDosesTaken: 0, ...body };
       await repo.addMedication(med);
@@ -106,6 +108,8 @@ export function createServer(
         dosesPerDay: number;
         refillLeadTimeDays: number;
         schedule: string[];
+        recipientEmail?: string | null;
+        companionEmails?: string[];
       };
       const med = { id, priorDosesTaken: 0, ...body };
       try {
