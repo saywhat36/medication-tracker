@@ -49,6 +49,51 @@ export function runRepositoryTests(
     });
   });
 
+  describe('recipient and companion emails', () => {
+    it('round-trips a recipient email and companion emails through addMedication', async () => {
+      const repo = await makeRepo();
+      await repo.addMedication({
+        id: 'med-emails',
+        name: 'Fluoxetine',
+        pillsAtPickup: 30,
+        lastPickupDate: '2026-06-25',
+        dosesPerDay: 1,
+        refillLeadTimeDays: 7,
+        schedule: ['09:00'],
+        recipientEmail: 'sarah@example.com',
+        companionEmails: ['gavin@example.com', 'mum@example.com'],
+      });
+      const med = (await repo.listMedications()).find((m) => m.id === 'med-emails');
+      expect(med?.recipientEmail).toBe('sarah@example.com');
+      expect(med?.companionEmails).toEqual(['gavin@example.com', 'mum@example.com']);
+    });
+
+    it('defaults to no recipient and no companions when omitted', async () => {
+      const repo = await makeRepo();
+      const meds = await repo.listMedications();
+      const med = meds.find((m) => m.id === 'med-1');
+      expect(med?.recipientEmail ?? null).toBeNull();
+      expect(med?.companionEmails ?? []).toEqual([]);
+    });
+
+    it('updates the recipient and companion emails via updateMedication', async () => {
+      const repo = await makeRepo();
+      await repo.updateMedication({ ...SEED_MED, recipientEmail: 'sarah@example.com', companionEmails: ['gavin@example.com'] });
+      const med = (await repo.listMedications()).find((m) => m.id === 'med-1');
+      expect(med?.recipientEmail).toBe('sarah@example.com');
+      expect(med?.companionEmails).toEqual(['gavin@example.com']);
+    });
+
+    it('can clear a previously set recipient and companion emails', async () => {
+      const repo = await makeRepo();
+      await repo.updateMedication({ ...SEED_MED, recipientEmail: 'sarah@example.com', companionEmails: ['gavin@example.com'] });
+      await repo.updateMedication({ ...SEED_MED, recipientEmail: null, companionEmails: [] });
+      const med = (await repo.listMedications()).find((m) => m.id === 'med-1');
+      expect(med?.recipientEmail ?? null).toBeNull();
+      expect(med?.companionEmails).toEqual([]);
+    });
+  });
+
   describe('deleteMedication', () => {
     it('removes the medication from listMedications', async () => {
       const repo = await makeRepo();

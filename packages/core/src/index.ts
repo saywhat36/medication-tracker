@@ -16,3 +16,4 @@ export {
   isOverdue,
 } from './doses.js';
 export { zonedTimeToUtc, formatInZone, dateInZone } from './time.js';
+export { isValidEmail, parseEmailList } from './email.js';

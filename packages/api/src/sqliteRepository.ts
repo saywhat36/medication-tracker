@@ -19,7 +19,9 @@ const SCHEMA = `
     prior_doses_taken    INTEGER NOT NULL DEFAULT 0,
     doses_per_day        REAL NOT NULL,
     refill_lead_time_days INTEGER NOT NULL,
-    schedule             TEXT NOT NULL
+    schedule             TEXT NOT NULL,
+    recipient_email      TEXT,
+    companion_emails     TEXT NOT NULL DEFAULT '[]'
   );
   CREATE TABLE IF NOT EXISTS doses (
     medication_id TEXT NOT NULL,
@@ -33,6 +35,23 @@ const SCHEMA = `
   );
 `;
 
+// CREATE TABLE IF NOT EXISTS above only sets up the columns on a brand-new
+// database file; a local dev db created before this change won't have them.
+// Add them defensively, ignoring the "duplicate column" error when they
+// already exist.
+function ensureRecipientColumns(db: DatabaseSync): void {
+  for (const stmt of [
+    'ALTER TABLE medications ADD COLUMN recipient_email TEXT',
+    "ALTER TABLE medications ADD COLUMN companion_emails TEXT NOT NULL DEFAULT '[]'",
+  ]) {
+    try {
+      db.exec(stmt);
+    } catch {
+      // Column already exists — fine.
+    }
+  }
+}
+
 // node:sqlite is synchronous; the methods are async only to satisfy the
 // MedicationRepository interface (shared with the async Postgres implementation).
 export class SqliteMedicationRepository implements MedicationRepository {
@@ -43,6 +62,7 @@ export class SqliteMedicationRepository implements MedicationRepository {
     this.db = db;
     this.timeZone = timeZone;
     this.db.exec(SCHEMA);
+    ensureRecipientColumns(this.db);
     for (const med of medications) this.insertMedication(med);
     for (const dose of doses) this.insertDose(dose);
   }
@@ -50,10 +70,21 @@ export class SqliteMedicationRepository implements MedicationRepository {
   private insertMedication(med: Medication): void {
     this.db
       .prepare(
-        `INSERT INTO medications (id, name, pills_at_pickup, last_pickup_date, prior_doses_taken, doses_per_day, refill_lead_time_days, schedule)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO medications (id, name, pills_at_pickup, last_pickup_date, prior_doses_taken, doses_per_day, refill_lead_time_days, schedule, recipient_email, companion_emails)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(med.id, med.name, med.pillsAtPickup, med.lastPickupDate, med.priorDosesTaken ?? 0, med.dosesPerDay, med.refillLeadTimeDays, JSON.stringify(med.schedule));
+      .run(
+        med.id,
+        med.name,
+        med.pillsAtPickup,
+        med.lastPickupDate,
+        med.priorDosesTaken ?? 0,
+        med.dosesPerDay,
+        med.refillLeadTimeDays,
+        JSON.stringify(med.schedule),
+        med.recipientEmail ?? null,
+        JSON.stringify(med.companionEmails ?? [])
+      );
   }
 
   private insertDose(dose: Dose): void {
@@ -81,7 +112,7 @@ export class SqliteMedicationRepository implements MedicationRepository {
   async updateMedication(med: Medication): Promise<void> {
     const result = this.db
       .prepare(
-        `UPDATE medications SET name = ?, pills_at_pickup = ?, last_pickup_date = ?, prior_doses_taken = ?, doses_per_day = ?, refill_lead_time_days = ?, schedule = ? WHERE id = ?`
+        `UPDATE medications SET name = ?, pills_at_pickup = ?, last_pickup_date = ?, prior_doses_taken = ?, doses_per_day = ?, refill_lead_time_days = ?, schedule = ?, recipient_email = ?, companion_emails = ? WHERE id = ?`
       )
       .run(
         med.name,
@@ -91,6 +122,8 @@ export class SqliteMedicationRepository implements MedicationRepository {
         med.dosesPerDay,
         med.refillLeadTimeDays,
         JSON.stringify(med.schedule),
+        med.recipientEmail ?? null,
+        JSON.stringify(med.companionEmails ?? []),
         med.id
       );
     if ((result as { changes: number }).changes === 0) {
@@ -213,6 +246,8 @@ function toMedication(row: Record<string, unknown>): Medication {
     dosesPerDay: row['doses_per_day'] as number,
     refillLeadTimeDays: row['refill_lead_time_days'] as number,
     schedule: JSON.parse(row['schedule'] as string) as string[],
+    recipientEmail: (row['recipient_email'] as string | null) ?? null,
+    companionEmails: JSON.parse((row['companion_emails'] as string | null) ?? '[]') as string[],
   };
 }
 

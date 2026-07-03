@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Medication } from '@medication-tracker/core';
+import { isValidEmail, parseEmailList, type Medication } from '@medication-tracker/core';
 
 export type MedicationFormData = Omit<Medication, 'id'>;
 
@@ -43,8 +43,13 @@ export function MedicationForm({
   const [dosesPerDay, setDosesPerDay] = useState(String(initial?.dosesPerDay ?? 1));
   const [refillLeadTimeDays, setRefillLeadTimeDays] = useState(String(initial?.refillLeadTimeDays ?? 7));
   const [scheduleTime, setScheduleTime] = useState(initial?.schedule?.[0] ?? '09:00');
+  const [recipientEmail, setRecipientEmail] = useState(initial?.recipientEmail ?? '');
+  const [companionEmails, setCompanionEmails] = useState((initial?.companionEmails ?? []).join(', '));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const recipientEmailTrimmed = recipientEmail.trim();
+  const recipientEmailInvalid = recipientEmailTrimmed !== '' && !isValidEmail(recipientEmailTrimmed);
 
   // How many pills are left today, either stated directly or worked out from the
   // pickup: collected minus a dose per day for each day since pickup.
@@ -56,6 +61,10 @@ export function MedicationForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (recipientEmailInvalid) {
+      setError("That recipient email doesn't look right");
+      return;
+    }
     setError(null);
     setSubmitting(true);
     try {
@@ -68,6 +77,8 @@ export function MedicationForm({
         refillLeadTimeDays: Number(refillLeadTimeDays),
         // When not editing the time, preserve the existing schedule.
         schedule: showTime ? [scheduleTime] : (initial?.schedule ?? [scheduleTime]),
+        recipientEmail: recipientEmailTrimmed === '' ? null : recipientEmailTrimmed,
+        companionEmails: parseEmailList(companionEmails),
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -139,6 +150,36 @@ export function MedicationForm({
           <input required type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className={inputClass} />
         </label>
       )}
+
+      <div className="space-y-3 border-t border-border pt-3">
+        <label className="block space-y-1">
+          <span className="text-xs text-muted-foreground">
+            Recipient&rsquo;s email <span className="italic">(optional)</span> — reminded when this is due
+          </span>
+          <input
+            type="email"
+            value={recipientEmail}
+            onChange={(e) => setRecipientEmail(e.target.value)}
+            placeholder="e.g. sarah@example.com"
+            className={inputClass}
+          />
+          {recipientEmailInvalid && (
+            <span className="block text-xs text-destructive">That doesn&rsquo;t look like a valid email</span>
+          )}
+        </label>
+
+        <label className="block space-y-1">
+          <span className="text-xs text-muted-foreground">
+            Companion emails <span className="italic">(optional, comma-separated)</span> — told if it&rsquo;s missed
+          </span>
+          <input
+            value={companionEmails}
+            onChange={(e) => setCompanionEmails(e.target.value)}
+            placeholder="e.g. gavin@example.com, mum@example.com"
+            className={inputClass}
+          />
+        </label>
+      </div>
 
       {error && <p className="text-xs text-destructive">{error}</p>}
 
