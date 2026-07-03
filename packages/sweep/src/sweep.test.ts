@@ -314,23 +314,30 @@ describe('runSweep — email notifications', () => {
 const LINK_OPTIONS = { secret: 'test-secret', baseUrl: 'https://api.example.com' };
 
 describe('runSweep — tap-to-take links', () => {
-  it('appends a take link to the due-now reminder for both recipient and companions', async () => {
+  it('appends a take link to the recipient copy of the due-now reminder, but not the companion copies', async () => {
     const notifier = fakeNotifier();
     const emailSender = fakeEmailSender();
     const { repo } = fakeRepo([RECENT_DOSE], [MED_WITH_EMAILS]);
     await runSweep(repo, notifier, NOW, 'UTC', emailSender, LINK_OPTIONS);
     expect(emailSender.messages).toHaveLength(3);
-    for (const m of emailSender.messages) {
-      expect(m.body).toContain('Mark as taken: https://api.example.com/take/');
+    const toRecipient = emailSender.messages.find((m) => m.to === 'sarah@example.com');
+    const toCompanions = emailSender.messages.filter((m) => m.to !== 'sarah@example.com');
+    expect(toRecipient?.body).toContain('Mark as taken: https://api.example.com/take/');
+    expect(toCompanions).toHaveLength(2);
+    for (const m of toCompanions) {
+      expect(m.body).not.toContain('/take/');
     }
   });
 
-  it('appends a take link to the missed-dose email', async () => {
+  it('appends a take link to the recipient copy of the missed-dose email, but not the companion copies', async () => {
     const notifier = fakeNotifier();
     const emailSender = fakeEmailSender();
     const { repo } = fakeRepo([OVERDUE_DOSE], [MED_WITH_EMAILS]);
     await runSweep(repo, notifier, NOW, 'UTC', emailSender, LINK_OPTIONS);
-    expect(emailSender.messages.every((m) => m.body.includes('/take/'))).toBe(true);
+    const toRecipient = emailSender.messages.find((m) => m.to === 'sarah@example.com');
+    const toCompanions = emailSender.messages.filter((m) => m.to !== 'sarah@example.com');
+    expect(toRecipient?.body).toContain('/take/');
+    expect(toCompanions.every((m) => !m.body.includes('/take/'))).toBe(true);
   });
 
   it('does not append a take link when linkOptions is not provided', async () => {
@@ -354,7 +361,8 @@ describe('runSweep — tap-to-take links', () => {
     const emailSender = fakeEmailSender();
     const { repo } = fakeRepo([RECENT_DOSE], [MED_WITH_EMAILS]);
     await runSweep(repo, notifier, NOW, 'UTC', emailSender, LINK_OPTIONS);
-    const link = emailSender.messages[0]?.body.match(/https:\/\/api\.example\.com\/take\/(\S+)/)?.[1];
+    const toRecipient = emailSender.messages.find((m) => m.to === 'sarah@example.com');
+    const link = toRecipient?.body.match(/https:\/\/api\.example\.com\/take\/(\S+)/)?.[1];
     expect(link).toBeDefined();
     const { verifyDoseToken } = await import('@medication-tracker/api');
     const dose = verifyDoseToken(link!, LINK_OPTIONS.secret, Date.parse(NOW));

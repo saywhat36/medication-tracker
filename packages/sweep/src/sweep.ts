@@ -161,13 +161,10 @@ export async function runSweep(
         `Time to take your ${med.name}`,
         withTakeLink(`${med.name} is due now (${time}).`, dose.medicationId, dose.scheduledFor, linkOptions, nowMs),
         `Reminder: ${med.name} is due`,
-        withTakeLink(
-          `${name} needs to take ${med.name} — due ${time}.`,
-          dose.medicationId,
-          dose.scheduledFor,
-          linkOptions,
-          nowMs
-        )
+        // No take link for companions — marking a dose taken is the
+        // recipient's call, not something a companion should be able to do
+        // with one tap on someone else's behalf.
+        `${name} needs to take ${med.name} — due ${time}.`
       );
       await repo.recordDoseNotified(key);
       notified.add(key);
@@ -195,13 +192,9 @@ export async function runSweep(
           nowMs
         ),
         `${name} hasn't taken ${med.name} yet`,
-        withTakeLink(
-          `${name} hasn't taken ${med.name} yet — it was due at ${time}.`,
-          dose.medicationId,
-          dose.scheduledFor,
-          linkOptions,
-          nowMs
-        )
+        // No take link for companions — same reasoning as the due-now
+        // reminder above.
+        `${name} hasn't taken ${med.name} yet — it was due at ${time}.`
       );
     } else {
       const label = med?.name ?? dose.medicationId;
