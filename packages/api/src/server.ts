@@ -72,6 +72,7 @@ export function createServer(
         refillLeadTimeDays: number;
         schedule: string[];
         recipientEmail?: string | null;
+        recipientName?: string | null;
         companionEmails?: string[];
       };
       const med = { id: randomUUID(), priorDosesTaken: 0, ...body };
@@ -109,6 +110,7 @@ export function createServer(
         refillLeadTimeDays: number;
         schedule: string[];
         recipientEmail?: string | null;
+        recipientName?: string | null;
         companionEmails?: string[];
       };
       const med = { id, priorDosesTaken: 0, ...body };

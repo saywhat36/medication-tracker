@@ -21,6 +21,7 @@ const SCHEMA = `
     refill_lead_time_days INTEGER NOT NULL,
     schedule             TEXT NOT NULL,
     recipient_email      TEXT,
+    recipient_name       TEXT,
     companion_emails     TEXT NOT NULL DEFAULT '[]'
   );
   CREATE TABLE IF NOT EXISTS doses (
@@ -42,6 +43,7 @@ const SCHEMA = `
 function ensureRecipientColumns(db: DatabaseSync): void {
   for (const stmt of [
     'ALTER TABLE medications ADD COLUMN recipient_email TEXT',
+    'ALTER TABLE medications ADD COLUMN recipient_name TEXT',
     "ALTER TABLE medications ADD COLUMN companion_emails TEXT NOT NULL DEFAULT '[]'",
   ]) {
     try {
@@ -70,8 +72,8 @@ export class SqliteMedicationRepository implements MedicationRepository {
   private insertMedication(med: Medication): void {
     this.db
       .prepare(
-        `INSERT INTO medications (id, name, pills_at_pickup, last_pickup_date, prior_doses_taken, doses_per_day, refill_lead_time_days, schedule, recipient_email, companion_emails)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO medications (id, name, pills_at_pickup, last_pickup_date, prior_doses_taken, doses_per_day, refill_lead_time_days, schedule, recipient_email, recipient_name, companion_emails)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         med.id,
@@ -83,6 +85,7 @@ export class SqliteMedicationRepository implements MedicationRepository {
         med.refillLeadTimeDays,
         JSON.stringify(med.schedule),
         med.recipientEmail ?? null,
+        med.recipientName ?? null,
         JSON.stringify(med.companionEmails ?? [])
       );
   }
@@ -112,7 +115,7 @@ export class SqliteMedicationRepository implements MedicationRepository {
   async updateMedication(med: Medication): Promise<void> {
     const result = this.db
       .prepare(
-        `UPDATE medications SET name = ?, pills_at_pickup = ?, last_pickup_date = ?, prior_doses_taken = ?, doses_per_day = ?, refill_lead_time_days = ?, schedule = ?, recipient_email = ?, companion_emails = ? WHERE id = ?`
+        `UPDATE medications SET name = ?, pills_at_pickup = ?, last_pickup_date = ?, prior_doses_taken = ?, doses_per_day = ?, refill_lead_time_days = ?, schedule = ?, recipient_email = ?, recipient_name = ?, companion_emails = ? WHERE id = ?`
       )
       .run(
         med.name,
@@ -123,6 +126,7 @@ export class SqliteMedicationRepository implements MedicationRepository {
         med.refillLeadTimeDays,
         JSON.stringify(med.schedule),
         med.recipientEmail ?? null,
+        med.recipientName ?? null,
         JSON.stringify(med.companionEmails ?? []),
         med.id
       );
@@ -247,6 +251,7 @@ function toMedication(row: Record<string, unknown>): Medication {
     refillLeadTimeDays: row['refill_lead_time_days'] as number,
     schedule: JSON.parse(row['schedule'] as string) as string[],
     recipientEmail: (row['recipient_email'] as string | null) ?? null,
+    recipientName: (row['recipient_name'] as string | null) ?? null,
     companionEmails: JSON.parse((row['companion_emails'] as string | null) ?? '[]') as string[],
   };
 }
