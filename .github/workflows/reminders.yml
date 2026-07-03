@@ -21,13 +21,17 @@ jobs:
       - run: npm ci
 
       # Single overdue-check against the hosted DB. Sends per-medication
-      # reminder/missed/taken emails via Resend when RESEND_API_KEY is set
-      # (and, for the general refill/fallback channel, when NOTIFY_EMAIL is
-      # also set); falls back to Telegram, then console logging. Secrets are
-      # configured in the repo (Settings → Secrets and variables → Actions).
+      # reminder/missed/taken emails via Gmail (preferred — free, sends to
+      # anyone) when GMAIL_USER/GMAIL_APP_PASSWORD are set, else Resend when
+      # RESEND_API_KEY is set (limited to your own address without a verified
+      # domain — see .env.example); falls back to Telegram, then console
+      # logging. Secrets are configured in the repo (Settings → Secrets and
+      # variables → Actions).
       - run: npm run sweep:once --workspace @medication-tracker/sweep
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GMAIL_USER: ${{ vars.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESEND_FROM_EMAIL: ${{ vars.RESEND_FROM_EMAIL }}
           NOTIFY_EMAIL: ${{ vars.NOTIFY_EMAIL }}

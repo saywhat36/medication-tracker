@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import { dateInZone } from '@medication-tracker/core';
 import { createRepository } from '@medication-tracker/api';
-import { ResendEmailSender } from './emailSender.js';
+import { emailSenderFromEnv } from './emailSender.js';
 import { ConsoleNotifier, EmailNotifier } from './notifier.js';
 import { TelegramNotifier } from './telegramNotifier.js';
 import { runSweep, type TakeLinkOptions } from './sweep.js';
@@ -22,10 +22,10 @@ async function main(): Promise<void> {
   const repo = await createRepository();
   const timeZone = process.env['APP_TIMEZONE'] || 'UTC';
 
-  // RESEND_API_KEY (per-medication recipient/companion emails) also powers
-  // the operator channel when NOTIFY_EMAIL is set, taking priority over
-  // Telegram — which stays as a fallback for anyone not yet on email.
-  const emailSender = process.env['RESEND_API_KEY'] ? ResendEmailSender.fromEnv() : undefined;
+  // Powers per-medication recipient/companion emails, and (when NOTIFY_EMAIL
+  // is also set) the operator channel, taking priority over Telegram — which
+  // stays as a fallback for anyone not yet on email.
+  const emailSender = emailSenderFromEnv();
   const notifyEmail = process.env['NOTIFY_EMAIL'];
   const notifier =
     emailSender && notifyEmail
@@ -56,7 +56,7 @@ async function main(): Promise<void> {
 
   console.log(
     `[sweep] started — threshold ${thresholdHours}h, ` +
-      `notifier: ${notifier.constructor.name}, per-medication email: ${emailSender ? 'on' : 'off'}, ` +
+      `notifier: ${notifier.constructor.name}, per-medication email: ${emailSender ? emailSender.constructor.name : 'off'}, ` +
       `tap-to-take links: ${linkOptions ? 'on' : 'off'}`
   );
 }

@@ -75,6 +75,16 @@ function hasEmailAudience(med: Medication): boolean {
   return Boolean(med.recipientEmail) || (med.companionEmails?.length ?? 0) > 0;
 }
 
+// Sends to the recipient and each companion independently — one bad address
+// (or one provider hiccup) must not stop the others from getting their copy,
+// and must not cause a retry that duplicates the ones that already went out.
+//
+// If every send fails (e.g. the provider itself is down or misconfigured),
+// this rethrows so the caller doesn't record the dose as notified — the next
+// sweep run will retry the whole thing, matching the pre-existing behaviour
+// for a total outage. If only some fail, those are logged but the call
+// succeeds, since re-attempting would re-send to whichever addresses already
+// received it.
 async function notifyRecipientAndCompanions(
   emailSender: EmailSender,
   med: Medication,
@@ -83,11 +93,28 @@ async function notifyRecipientAndCompanions(
   companionSubject: string,
   companionBody: string
 ): Promise<void> {
-  if (med.recipientEmail) {
-    await emailSender.send(med.recipientEmail, recipientSubject, recipientBody);
-  }
+  const targets: { to: string; subject: string; body: string }[] = [];
+  if (med.recipientEmail) targets.push({ to: med.recipientEmail, subject: recipientSubject, body: recipientBody });
   for (const email of med.companionEmails ?? []) {
-    await emailSender.send(email, companionSubject, companionBody);
+    targets.push({ to: email, subject: companionSubject, body: companionBody });
+  }
+
+  let successCount = 0;
+  const failures: { to: string; error: unknown }[] = [];
+  for (const target of targets) {
+    try {
+      await emailSender.send(target.to, target.subject, target.body);
+      successCount++;
+    } catch (error) {
+      failures.push({ to: target.to, error });
+    }
+  }
+
+  for (const failure of failures) {
+    console.error(`[sweep] failed to email ${failure.to} for ${med.name}:`, failure.error);
+  }
+  if (successCount === 0 && failures.length > 0) {
+    throw failures[0]!.error;
   }
 }
 
