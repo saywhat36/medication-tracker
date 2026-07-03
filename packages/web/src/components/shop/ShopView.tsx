@@ -7,7 +7,7 @@ import { DueTodayPaper } from './DueTodayPaper';
 import { EditBottleModal } from './EditBottleModal';
 import { Parchment } from './Parchment';
 import { RememberNote } from './RememberNote';
-import { ShelfUnit } from './ShelfUnit';
+import { ShopScene } from './ShopScene';
 import { toBottles } from './bottleData';
 
 interface Props {
@@ -96,8 +96,8 @@ export function ShopView({
 
   return (
     <div className="min-h-screen bg-apothecary-wood-wall">
-      <div className="mx-auto max-w-2xl px-4 py-6 space-y-5">
-        <header className="flex items-end justify-between">
+      <div className="mx-auto max-w-2xl px-4 py-6">
+        <header className="mb-4 flex items-end justify-between">
           <div>
             <h1 className="font-apothecary text-3xl text-apothecary-parchment-light">
               The apothecary
@@ -112,20 +112,23 @@ export function ShopView({
           </button>
         </header>
 
-        <div>
-          <ShelfUnit
-            bottles={bottles}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            onEdit={(id) => setEditingId(id)}
-            compact={compact}
-            evening={evening}
-          />
-          <p className="mt-1 min-h-[1.75rem] text-center font-hand text-lg text-apothecary-parchment-edge">
+        <ShopScene
+          bottles={bottles}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onEdit={(id) => setEditingId(id)}
+          compact={compact}
+          evening={evening}
+        />
+
+        {/* The table surface continues from the scene's table into this block,
+            so the papers read as lying on the same table as the window jars. */}
+        <div className="bg-apothecary-wood-counter-top px-4 pb-6 pt-3 sm:px-8">
+          <p className="mb-4 min-h-[1.5rem] text-center font-hand text-lg text-apothecary-ink">
             {selected ? (
               <button
                 onClick={() => setEditingId(selected.id)}
-                className="underline decoration-dotted underline-offset-4 hover:text-apothecary-parchment-light"
+                className="text-apothecary-ink underline decoration-dotted underline-offset-4 hover:text-apothecary-ink-faded"
               >
                 {selected.name} — {selected.pillsRemaining}{' '}
                 {selected.pillsRemaining === 1 ? 'pill' : 'pills'} left · edit
@@ -134,9 +137,7 @@ export function ShopView({
               'double-tap a bottle to edit it'
             ) : null}
           </p>
-        </div>
 
-        <div className="rounded-sm bg-apothecary-wood-counter p-5 sm:p-8">
           {bottles.length === 0 ? (
             <Parchment className="text-center">
               <p className="font-apothecary text-lg tracking-widest">THE SHELVES ARE BARE</p>
@@ -148,30 +149,29 @@ export function ShopView({
               </button>
             </Parchment>
           ) : (
-            <div className="grid items-start gap-5 sm:grid-cols-2">
-              <DueTodayPaper
-                doses={doses}
-                medications={medications}
-                onTaken={onDoseTaken}
-                onUntaken={onDoseUntaken}
-                onPillTaken={flyPill}
-                evening={evening}
-              />
-              <RememberNote medications={medications} statuses={refillStatuses} />
-            </div>
+            <>
+              <div className="grid items-start gap-5 sm:grid-cols-2">
+                <DueTodayPaper
+                  doses={doses}
+                  medications={medications}
+                  onTaken={onDoseTaken}
+                  onUntaken={onDoseUntaken}
+                  onPillTaken={flyPill}
+                  evening={evening}
+                />
+                <RememberNote medications={medications} statuses={refillStatuses} />
+              </div>
+              <p className="mt-5 text-center">
+                <button
+                  onClick={() => setAdding(true)}
+                  className="font-hand text-lg text-apothecary-ink underline hover:text-apothecary-ink-faded"
+                >
+                  + stock a new bottle
+                </button>
+              </p>
+            </>
           )}
         </div>
-
-        {bottles.length > 0 && (
-          <p className="text-center">
-            <button
-              onClick={() => setAdding(true)}
-              className="font-hand text-lg text-apothecary-parchment-edge underline hover:text-apothecary-parchment-light"
-            >
-              + stock a new bottle
-            </button>
-          </p>
-        )}
       </div>
 
       {editing && (
