@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sceneLayout, shelfRows } from './sceneLayout.js';
+import { sceneLayout, shelfRows, slotCenter, totalSlots } from './sceneLayout.js';
 
 describe('sceneLayout', () => {
   it('should put the window to the right of the cabinet on desktop', () => {
@@ -48,5 +48,39 @@ describe('shelfRows', () => {
 
   it('should return no rows for an empty shelf', () => {
     expect(shelfRows([], 4)).toEqual([]);
+  });
+});
+
+describe('slot geometry', () => {
+  it('should offer perShelf slots per shelf', () => {
+    const l = sceneLayout(3, false);
+    expect(totalSlots(l)).toBe(l.shelfYs.length * l.perShelf);
+  });
+
+  it('should always leave decorative slots free when barely stocked', () => {
+    const l = sceneLayout(2, false);
+    expect(totalSlots(l)).toBeGreaterThan(2);
+  });
+
+  it('should place consecutive slots left-to-right on the same shelf', () => {
+    const l = sceneLayout(9, false);
+    const a = slotCenter(l, 0);
+    const b = slotCenter(l, 1);
+    expect(a.shelfY).toBe(b.shelfY);
+    expect(b.x).toBeGreaterThan(a.x);
+  });
+
+  it('should drop to the next shelf after perShelf slots', () => {
+    const l = sceneLayout(9, false);
+    expect(slotCenter(l, l.perShelf).shelfY).toBeGreaterThan(slotCenter(l, 0).shelfY);
+  });
+
+  it('should keep every slot inside the cabinet interior', () => {
+    const l = sceneLayout(9, false);
+    for (let i = 0; i < totalSlots(l); i++) {
+      const { x } = slotCenter(l, i);
+      expect(x).toBeGreaterThan(l.interiorX);
+      expect(x).toBeLessThan(l.interiorX + l.interiorW);
+    }
   });
 });

@@ -90,3 +90,21 @@ export function shelfRows<T>(bottles: T[], perShelf: number): T[][] {
   }
   return rows;
 }
+
+// Every shelf holds `perShelf` fixed slots. Medications fill them left-first,
+// top shelf first; the leftover slots get decorative jars — so the shelves
+// look packed (like the reference) however few medications there are, and the
+// bottles keep stable positions the pill-flight can aim at.
+export function totalSlots(l: SceneLayout): number {
+  return l.shelfYs.length * l.perShelf;
+}
+
+export function slotCenter(l: SceneLayout, index: number): { x: number; shelfY: number } {
+  const shelf = Math.floor(index / l.perShelf);
+  const slot = index % l.perShelf;
+  const slotW = l.interiorW / l.perShelf;
+  return {
+    x: Math.round(l.interiorX + slotW * (slot + 0.5)),
+    shelfY: l.shelfYs[shelf] ?? l.shelfYs[0] ?? 0,
+  };
+}
