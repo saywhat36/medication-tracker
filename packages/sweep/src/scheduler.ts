@@ -4,7 +4,18 @@ import { createRepository } from '@medication-tracker/api';
 import { ResendEmailSender } from './emailSender.js';
 import { ConsoleNotifier, EmailNotifier } from './notifier.js';
 import { TelegramNotifier } from './telegramNotifier.js';
-import { runSweep } from './sweep.js';
+import { runSweep, type TakeLinkOptions } from './sweep.js';
+
+// Both LINK_SIGNING_SECRET and API_PUBLIC_URL must be set for tap-to-take
+// links to appear — omitted gracefully (plain-text emails, no link) if either
+// is missing. The secret must match the API service's LINK_SIGNING_SECRET
+// exactly, since that's what verifies the link when it's tapped.
+function takeLinkOptionsFromEnv(): TakeLinkOptions | undefined {
+  const secret = process.env['LINK_SIGNING_SECRET'];
+  const baseUrl = process.env['API_PUBLIC_URL'];
+  if (!secret || !baseUrl) return undefined;
+  return { secret, baseUrl: baseUrl.replace(/\/$/, '') };
+}
 
 async function main(): Promise<void> {
   // Same backend selection as the API: Postgres if DATABASE_URL is set, else SQLite.
@@ -22,6 +33,7 @@ async function main(): Promise<void> {
       : process.env['TELEGRAM_BOT_TOKEN'] && process.env['TELEGRAM_CHAT_ID']
         ? TelegramNotifier.fromEnv()
         : new ConsoleNotifier();
+  const linkOptions = takeLinkOptionsFromEnv();
 
   const thresholdHours = Number(process.env['SWEEP_THRESHOLD_HOURS'] ?? 3);
 
@@ -32,7 +44,7 @@ async function main(): Promise<void> {
       // Make sure today's doses exist before checking for overdue ones, so
       // reminders fire even on days the dashboard was never opened.
       await repo.ensureDosesForDay(dateInZone(now, timeZone));
-      await runSweep(repo, notifier, now, timeZone, emailSender);
+      await runSweep(repo, notifier, now, timeZone, emailSender, linkOptions);
     } catch (err) {
       console.error('[sweep] error:', err);
     }
@@ -44,7 +56,8 @@ async function main(): Promise<void> {
 
   console.log(
     `[sweep] started — threshold ${thresholdHours}h, ` +
-      `notifier: ${notifier.constructor.name}, per-medication email: ${emailSender ? 'on' : 'off'}`
+      `notifier: ${notifier.constructor.name}, per-medication email: ${emailSender ? 'on' : 'off'}, ` +
+      `tap-to-take links: ${linkOptions ? 'on' : 'off'}`
   );
 }
 

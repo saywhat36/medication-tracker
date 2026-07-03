@@ -20,3 +20,7 @@ services:
         sync: false # a long random secret (openssl rand -hex 32)
       - key: APP_PASSWORD
         sync: false # the password you'll type into the web login
+      - key: LINK_SIGNING_SECRET
+        sync: false # a long random secret (openssl rand -hex 32) — must match
+        # the GitHub Actions LINK_SIGNING_SECRET used by the reminders workflow,
+        # since one signs the tap-to-take email links and the other verifies them
