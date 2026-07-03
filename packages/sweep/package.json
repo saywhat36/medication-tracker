@@ -11,9 +11,11 @@
   "dependencies": {
     "@medication-tracker/api": "*",
     "@medication-tracker/core": "*",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "nodemailer": "^9.0.3"
   },
   "devDependencies": {
-    "@types/node-cron": "^3.0.11"
+    "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^8.0.1"
   }
 }

@@ -60,6 +60,21 @@ function fakeEmailSender(): EmailSender & { messages: { to: string; subject: str
   };
 }
 
+// A sender that rejects for any address in failFor, so tests can exercise
+// partial and total send failures.
+function flakyEmailSender(
+  failFor: Set<string>
+): EmailSender & { messages: { to: string; subject: string; body: string }[] } {
+  const messages: { to: string; subject: string; body: string }[] = [];
+  return {
+    messages,
+    send: vi.fn(async (to: string, subject: string, body: string) => {
+      if (failFor.has(to)) throw new Error(`simulated failure for ${to}`);
+      messages.push({ to, subject, body });
+    }),
+  };
+}
+
 const MED: Medication = {
   id: 'med-1',
   name: 'Metformin',
@@ -344,5 +359,41 @@ describe('runSweep — tap-to-take links', () => {
     const { verifyDoseToken } = await import('@medication-tracker/api');
     const dose = verifyDoseToken(link!, LINK_OPTIONS.secret, Date.parse(NOW));
     expect(dose).toEqual({ medicationId: RECENT_DOSE.medicationId, scheduledFor: RECENT_DOSE.scheduledFor });
+  });
+});
+
+describe('runSweep — partial email send failures', () => {
+  it('still delivers to the addresses that succeed when one fails', async () => {
+    const notifier = fakeNotifier();
+    const emailSender = flakyEmailSender(new Set(['gavin@example.com']));
+    const { repo } = fakeRepo([OVERDUE_DOSE], [MED_WITH_EMAILS]);
+    await runSweep(repo, notifier, NOW, 'UTC', emailSender);
+    const recipients = emailSender.messages.map((m) => m.to);
+    expect(recipients).toContain('sarah@example.com');
+    expect(recipients).toContain('mum@example.com');
+    expect(recipients).not.toContain('gavin@example.com');
+  });
+
+  it('records the dose as notified after a partial failure, so it does not re-send to the addresses that already succeeded', async () => {
+    const notifier = fakeNotifier();
+    const emailSender = flakyEmailSender(new Set(['gavin@example.com']));
+    const { repo } = fakeRepo([OVERDUE_DOSE], [MED_WITH_EMAILS]);
+    await runSweep(repo, notifier, NOW, 'UTC', emailSender);
+    await runSweep(repo, notifier, NOW, 'UTC', emailSender); // second run
+    const toSarahCount = emailSender.messages.filter((m) => m.to === 'sarah@example.com').length;
+    expect(toSarahCount).toBe(1); // not duplicated on the second run
+  });
+
+  it('does not record the dose as notified when every send fails, so the next run retries all of them', async () => {
+    const notifier = fakeNotifier();
+    const allFail = flakyEmailSender(new Set(['sarah@example.com', 'gavin@example.com', 'mum@example.com']));
+    const { repo } = fakeRepo([OVERDUE_DOSE], [MED_WITH_EMAILS]);
+    await expect(runSweep(repo, notifier, NOW, 'UTC', allFail)).rejects.toThrow();
+    expect(await repo.getNotifiedDoseKeys()).toEqual([]);
+
+    // Once the provider starts working, a later run should retry and succeed.
+    const emailSender = fakeEmailSender();
+    await runSweep(repo, notifier, NOW, 'UTC', emailSender);
+    expect(emailSender.messages).toHaveLength(3);
   });
 });

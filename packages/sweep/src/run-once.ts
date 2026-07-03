@@ -1,6 +1,6 @@
 import { dateInZone } from '@medication-tracker/core';
 import { createRepository } from '@medication-tracker/api';
-import { ResendEmailSender } from './emailSender.js';
+import { emailSenderFromEnv } from './emailSender.js';
 import { ConsoleNotifier, EmailNotifier } from './notifier.js';
 import { TelegramNotifier } from './telegramNotifier.js';
 import { runSweep, type TakeLinkOptions } from './sweep.js';
@@ -22,7 +22,7 @@ function takeLinkOptionsFromEnv(): TakeLinkOptions | undefined {
 async function main(): Promise<void> {
   const repo = await createRepository();
 
-  const emailSender = process.env['RESEND_API_KEY'] ? ResendEmailSender.fromEnv() : undefined;
+  const emailSender = emailSenderFromEnv();
   const notifyEmail = process.env['NOTIFY_EMAIL'];
   const notifier =
     emailSender && notifyEmail
@@ -35,7 +35,7 @@ async function main(): Promise<void> {
   const timeZone = process.env['APP_TIMEZONE'] || 'UTC';
   const now = new Date().toISOString();
   console.log(
-    `[sweep:once] running at ${now}, tz: ${timeZone}, notifier: ${notifier.constructor.name}, per-medication email: ${emailSender ? 'on' : 'off'}, tap-to-take links: ${linkOptions ? 'on' : 'off'}`
+    `[sweep:once] running at ${now}, tz: ${timeZone}, notifier: ${notifier.constructor.name}, per-medication email: ${emailSender ? emailSender.constructor.name : 'off'}, tap-to-take links: ${linkOptions ? 'on' : 'off'}`
   );
   await repo.ensureDosesForDay(dateInZone(now, timeZone));
   await runSweep(repo, notifier, now, timeZone, emailSender, linkOptions);
