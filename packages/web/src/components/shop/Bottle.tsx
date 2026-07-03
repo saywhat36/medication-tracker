@@ -6,7 +6,7 @@ const { glass, ink, parchment, wood, flame } = apothecary;
 interface Props {
   bottle: BottleData;
   // Where the bottle stands: horizontal centre and the shelf-board top it
-  // sits on, in ShelfUnit's coordinate space.
+  // sits on, in ShopScene's coordinate space.
   x: number;
   shelfY: number;
   selected: boolean;
@@ -38,7 +38,7 @@ function pillPositions(count: number): { cx: number; cy: number }[] {
 // One glass bottle with a metal cap, a parchment label, and the actual pills
 // stacked inside — the jar empties pill by pill as doses are taken. Drawn in
 // local coordinates (centre x = 0, base y = 0) and translated into place, so
-// ShelfUnit can lay bottles out freely.
+// ShopScene can lay bottles out freely.
 //
 // Interactions: click/tap or focus picks the bottle up off the shelf;
 // double-click, double-tap, or Enter/Space opens the edit form.
