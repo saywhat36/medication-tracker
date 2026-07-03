@@ -1,3 +1,4 @@
+import type { SkyPhase } from '@/lib/skyPhase';
 import { apothecary } from '@/theme/apothecary';
 import { Bottle } from './Bottle';
 import { HangingFoliage } from './HangingFoliage';
@@ -14,13 +15,14 @@ interface Props {
   onEdit: (id: string) => void;
   compact?: boolean;
   evening?: boolean;
+  phase: SkyPhase;
 }
 
 // The whole apothecary corner in one SVG: shelves of medicine bottles on the
 // left, a sunlit garden window on the right, a table running across the
 // bottom with the candle on it, and foliage trailing from the ceiling. The
 // bottles are the interactive medications; everything else is scenery.
-export function ShopScene({ bottles, selectedId, onSelect, onEdit, compact, evening }: Props) {
+export function ShopScene({ bottles, selectedId, onSelect, onEdit, compact, evening, phase }: Props) {
   const layout = sceneLayout(bottles.length, compact ?? false);
   const { width, height, cabinet, interiorX, interiorW, shelfYs, perShelf, tableY, candle } = layout;
   const rows = shelfRows(bottles, perShelf);
@@ -35,7 +37,7 @@ export function ShopScene({ bottles, selectedId, onSelect, onEdit, compact, even
     <svg width="100%" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={label}>
       <rect x="0" y="0" width={width} height={tableY} fill={wood.wall} />
 
-      <WindowView box={layout.windowBox} />
+      <WindowView box={layout.windowBox} phase={phase} />
 
       <rect
         x={interiorX}
