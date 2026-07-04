@@ -25,3 +25,12 @@ export interface RefillStatus {
   runOutDate: string;            // ISO date the pills are expected to run out
   refillDate: string;            // ISO date to reorder by (when a reminder is due)
 }
+
+export interface MedicationAdherence {
+  medicationId: string;
+  windowDays: number;                  // the lookback window this was computed over, e.g. 30
+  scheduledCount: number;              // doses scheduled in the last windowDays, inclusive of today
+  takenCount: number;                  // of those, how many have takenAt !== null
+  adherencePercentage: number | null;  // Math.round(takenCount/scheduledCount*100); null when scheduledCount === 0
+  currentStreakDays: number;           // consecutive fully-elapsed local days, ending yesterday, where every scheduled dose was taken
+}

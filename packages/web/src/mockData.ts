@@ -1,4 +1,4 @@
-import type { Medication, Dose, RefillStatus } from '@medication-tracker/core';
+import type { Medication, Dose, RefillStatus, MedicationAdherence } from '@medication-tracker/core';
 
 export const mockMedications: Medication[] = [
   {
@@ -59,6 +59,30 @@ export const mockRefillStatuses: RefillStatus[] = [
   },
 ];
 
+// Computed relative to today, same rationale as mockRefillStatuses — though
+// unlike refill status, adherence is a rolling window/streak, so there's
+// nothing here that would actually drift with real time; kept alongside for
+// consistency with the pattern.
+export const mockAdherenceStatuses: MedicationAdherence[] = [
+  // med-1: a clean 5-day streak.
+  { medicationId: 'med-1', windowDays: 30, scheduledCount: 10, takenCount: 9, adherencePercentage: 90, currentStreakDays: 5 },
+  // med-2: streak broken recently, lower adherence.
+  { medicationId: 'med-2', windowDays: 30, scheduledCount: 10, takenCount: 6, adherencePercentage: 60, currentStreakDays: 0 },
+];
+
+// A freshly added medication has no dose history yet — the real API's
+// getAdherenceStatuses would compute exactly this zero-history shape for it.
+function freshAdherence(med: Medication): MedicationAdherence {
+  return {
+    medicationId: med.id,
+    windowDays: 30,
+    scheduledCount: 0,
+    takenCount: 0,
+    adherencePercentage: null,
+    currentStreakDays: 0,
+  };
+}
+
 // What the real API would compute for a medication whose pill count was just
 // (re)baselined — pillsAtPickup pills as of today.
 function freshStatus(med: Medication): RefillStatus {
@@ -100,6 +124,9 @@ export const mockClient = {
     // The real API computes a refill status for every medication; without
     // one here a freshly added med renders as an empty bottle in shop view.
     mockRefillStatuses.push(freshStatus(med));
+    // Same reasoning for adherence — without this, a newly added medication
+    // is silently absent from the Adherence section until reload.
+    mockAdherenceStatuses.push(freshAdherence(med));
     // It also creates today's doses for the new schedule (ensureDosesForDay).
     for (const time of med.schedule) {
       const [h, m] = time.split(':').map(Number);
@@ -114,6 +141,8 @@ export const mockClient = {
     if (index !== -1) mockMedications.splice(index, 1);
     const statusIndex = mockRefillStatuses.findIndex((s) => s.medicationId === id);
     if (statusIndex !== -1) mockRefillStatuses.splice(statusIndex, 1);
+    const adherenceIndex = mockAdherenceStatuses.findIndex((a) => a.medicationId === id);
+    if (adherenceIndex !== -1) mockAdherenceStatuses.splice(adherenceIndex, 1);
     // The real API removes the dose history with the medication.
     for (let i = mockTodaysDoses.length - 1; i >= 0; i--) {
       if (mockTodaysDoses[i]?.medicationId === id) mockTodaysDoses.splice(i, 1);
@@ -146,4 +175,5 @@ export const mockClient = {
     return Promise.resolve();
   },
   getRefillStatuses: () => Promise.resolve([...mockRefillStatuses]),
+  getAdherenceStatuses: () => Promise.resolve([...mockAdherenceStatuses]),
 };

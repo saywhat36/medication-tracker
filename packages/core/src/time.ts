@@ -68,3 +68,10 @@ export function dateInZone(iso: string, timeZone: string): string {
     day: '2-digit',
   }).format(new Date(iso));
 }
+
+// A calendar date (YYYY-MM-DD) offset by a number of days (may be negative).
+export function addDaysToDate(date: string, days: number): string {
+  const d = new Date(date);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}

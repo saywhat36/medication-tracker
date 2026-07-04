@@ -1,4 +1,4 @@
-import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
+import type { Dose, Medication, MedicationAdherence, RefillStatus } from '@medication-tracker/core';
 
 // All methods are async (return Promises) so the same interface can be backed by
 // a synchronous store (node:sqlite, in-memory) or an asynchronous one (Postgres).
@@ -26,6 +26,12 @@ export interface MedicationRepository {
     fromDate: string
   ): Promise<void>;
   getRefillStatuses(today: string): Promise<RefillStatus[]>;
+  // All doses (any medication) whose scheduled local day falls within
+  // [startDate, endDate] inclusive (dates are YYYY-MM-DD, compared in the
+  // repository's configured timezone).
+  getDosesInRange(startDate: string, endDate: string): Promise<Dose[]>;
+  // Per-medication adherence over the last windowDays (default 30), as of `today`.
+  getAdherenceStatuses(today: string, windowDays?: number): Promise<MedicationAdherence[]>;
   // Notification log: which doses we've already sent an overdue reminder for,
   // so a one-shot sweep (e.g. a cron) doesn't re-notify the same dose.
   getNotifiedDoseKeys(): Promise<string[]>;

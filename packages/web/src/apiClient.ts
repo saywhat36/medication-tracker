@@ -1,4 +1,4 @@
-import type { Medication, Dose, RefillStatus } from '@medication-tracker/core';
+import type { Medication, Dose, RefillStatus, MedicationAdherence } from '@medication-tracker/core';
 
 const BASE = import.meta.env.VITE_API_URL ?? '';
 const TOKEN_KEY = 'mt_token';
@@ -105,4 +105,7 @@ export const apiClient = {
 
   getRefillStatuses: () =>
     fetch(`${BASE}/refill-status`, { headers: headers() }).then((r) => json<RefillStatus[]>(r)),
+
+  getAdherenceStatuses: () =>
+    fetch(`${BASE}/adherence`, { headers: headers() }).then((r) => json<MedicationAdherence[]>(r)),
 };

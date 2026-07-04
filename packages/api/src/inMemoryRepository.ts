@@ -5,8 +5,12 @@ import {
   dosesTakenSincePickup,
   computeReschedule,
   getRefillStatus,
+  dosesInRange,
+  computeAdherence,
+  addDaysToDate,
+  MAX_STREAK_LOOKBACK_DAYS,
 } from '@medication-tracker/core';
-import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
+import type { Dose, Medication, MedicationAdherence, RefillStatus } from '@medication-tracker/core';
 import type { MedicationRepository } from './repository.js';
 
 export class InMemoryMedicationRepository implements MedicationRepository {
@@ -115,6 +119,15 @@ export class InMemoryMedicationRepository implements MedicationRepository {
     return this.medications.map((m) =>
       getRefillStatus(m, dosesTakenSincePickup(this.doses, m), today)
     );
+  }
+
+  async getDosesInRange(startDate: string, endDate: string): Promise<Dose[]> {
+    return dosesInRange(this.doses, startDate, endDate, this.timeZone);
+  }
+
+  async getAdherenceStatuses(today: string, windowDays = 30): Promise<MedicationAdherence[]> {
+    const doses = await this.getDosesInRange(addDaysToDate(today, -MAX_STREAK_LOOKBACK_DAYS), today);
+    return this.medications.map((m) => computeAdherence(doses, m.id, today, this.timeZone, windowDays));
   }
 
   async getNotifiedDoseKeys(): Promise<string[]> {
