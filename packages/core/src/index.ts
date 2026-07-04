@@ -1,4 +1,4 @@
-export type { Medication, Dose, RefillStatus } from './types.js';
+export type { Medication, Dose, RefillStatus, MedicationAdherence } from './types.js';
 export {
   pillsRemaining,
   daysOfSupply,
@@ -15,5 +15,6 @@ export {
   computeReschedule,
   isOverdue,
 } from './doses.js';
-export { zonedTimeToUtc, formatInZone, dateInZone } from './time.js';
+export { zonedTimeToUtc, formatInZone, dateInZone, addDaysToDate } from './time.js';
 export { isValidEmail, parseEmailList } from './email.js';
+export { dosesInRange, computeAdherence, MAX_STREAK_LOOKBACK_DAYS } from './adherence.js';

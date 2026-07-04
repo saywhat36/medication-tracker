@@ -1,10 +1,12 @@
-import type { Medication, RefillStatus } from '@medication-tracker/core';
+import type { Medication, MedicationAdherence, RefillStatus } from '@medication-tracker/core';
+import { streakLabel } from '@/adherenceLabel';
 import { refillUrgency, urgencyRank, type RefillUrgency } from '@/refillUrgency';
 import { Parchment } from './Parchment';
 
 interface Props {
   medications: Medication[];
   statuses: RefillStatus[];
+  adherenceStatuses: MedicationAdherence[];
 }
 
 interface Entry {
@@ -13,6 +15,7 @@ interface Entry {
   urgency: RefillUrgency;
   daysLeft: number;
   runOutDate: string;
+  currentStreakDays: number;
 }
 
 // e.g. "Thu 9 Jul" — UTC-anchored so the shown day matches the stored date.
@@ -70,7 +73,7 @@ const sealMeaning: Record<RefillUrgency, string> = {
 // down the days of pills left, most urgent first, sealed in wax whose colour
 // gives the worst case at a glance — green wax means all is well, amber means
 // order soon, red means act.
-export function RememberNote({ medications, statuses }: Props) {
+export function RememberNote({ medications, statuses, adherenceStatuses }: Props) {
   const entries: Entry[] = statuses
     .map((s) => {
       const med = medications.find((m) => m.id === s.medicationId);
@@ -81,6 +84,8 @@ export function RememberNote({ medications, statuses }: Props) {
         urgency: refillUrgency(s.daysUntilRefill, daysUntilRunOut),
         daysLeft: Math.max(0, daysUntilRunOut),
         runOutDate: s.runOutDate,
+        currentStreakDays:
+          adherenceStatuses.find((a) => a.medicationId === s.medicationId)?.currentStreakDays ?? 0,
       };
     })
     .sort(
@@ -108,6 +113,9 @@ export function RememberNote({ medications, statuses }: Props) {
                   {action}
                 </p>
               )}
+              <p className="font-hand text-base leading-tight text-apothecary-ink-faded">
+                {streakLabel(entry.currentStreakDays)}
+              </p>
             </li>
           );
         })}

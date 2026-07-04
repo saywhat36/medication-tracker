@@ -255,6 +255,17 @@ export function createServer(
     })
   );
 
+  app.get(
+    '/adherence',
+    asyncHandler(async (req, res) => {
+      // A malformed value (e.g. "abc") must not 500 — fall back to the
+      // default rather than let it propagate into date arithmetic downstream.
+      const rawWindowDays = Number(req.query['windowDays']);
+      const windowDays = Number.isFinite(rawWindowDays) && rawWindowDays > 0 ? Math.floor(rawWindowDays) : 30;
+      res.json(await repo.getAdherenceStatuses(today(), windowDays));
+    })
+  );
+
   app.post(
     '/sweep',
     asyncHandler(async (_req, res) => {

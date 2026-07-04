@@ -366,6 +366,48 @@ describe('GET /refill-status', () => {
   });
 });
 
+describe('GET /adherence', () => {
+  it('returns adherence stats for all medications', async () => {
+    const res = await request(makeApp()).get('/adherence');
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].medicationId).toBe('med-1');
+    expect(res.body[0].windowDays).toBe(30);
+    expect(typeof res.body[0].scheduledCount).toBe('number');
+    expect(typeof res.body[0].takenCount).toBe('number');
+    expect(res.body[0]).toHaveProperty('adherencePercentage');
+    expect(typeof res.body[0].currentStreakDays).toBe('number');
+  });
+
+  it('accepts a ?windowDays= override', async () => {
+    const res = await request(makeApp()).get('/adherence?windowDays=7');
+    expect(res.status).toBe(200);
+    expect(res.body[0].windowDays).toBe(7);
+  });
+
+  it('falls back to the default window instead of erroring on a non-numeric ?windowDays=', async () => {
+    const res = await request(makeApp()).get('/adherence?windowDays=abc');
+    expect(res.status).toBe(200);
+    expect(res.body[0].windowDays).toBe(30);
+  });
+
+  it('falls back to the default window for a zero or negative ?windowDays=', async () => {
+    const zero = await request(makeApp()).get('/adherence?windowDays=0');
+    expect(zero.status).toBe(200);
+    expect(zero.body[0].windowDays).toBe(30);
+
+    const negative = await request(makeApp()).get('/adherence?windowDays=-5');
+    expect(negative.status).toBe(200);
+    expect(negative.body[0].windowDays).toBe(30);
+  });
+
+  it('floors a fractional ?windowDays=', async () => {
+    const res = await request(makeApp()).get('/adherence?windowDays=7.9');
+    expect(res.status).toBe(200);
+    expect(res.body[0].windowDays).toBe(7);
+  });
+});
+
 describe('POST /sweep', () => {
   it('reports overdue doses without notifying', async () => {
     const res = await request(makeApp()).post('/sweep');

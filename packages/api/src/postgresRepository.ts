@@ -7,8 +7,12 @@ import {
   scheduledDosesForDay,
   dosesTakenSincePickup,
   computeReschedule,
+  dosesInRange,
+  computeAdherence,
+  addDaysToDate,
+  MAX_STREAK_LOOKBACK_DAYS,
 } from '@medication-tracker/core';
-import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
+import type { Dose, Medication, MedicationAdherence, RefillStatus } from '@medication-tracker/core';
 import type { MedicationRepository } from './repository.js';
 
 const { Pool: PgPool } = pg;
@@ -181,6 +185,17 @@ export class PostgresMedicationRepository implements MedicationRepository {
     const { rows } = await this.pool.query('SELECT * FROM doses');
     const allDoses = (rows as Record<string, unknown>[]).map(toDose);
     return meds.map((m) => getRefillStatus(m, dosesTakenSincePickup(allDoses, m), today));
+  }
+
+  async getDosesInRange(startDate: string, endDate: string): Promise<Dose[]> {
+    const { rows } = await this.pool.query('SELECT * FROM doses');
+    return dosesInRange((rows as Record<string, unknown>[]).map(toDose), startDate, endDate, this.timeZone);
+  }
+
+  async getAdherenceStatuses(today: string, windowDays = 30): Promise<MedicationAdherence[]> {
+    const meds = await this.listMedications();
+    const doses = await this.getDosesInRange(addDaysToDate(today, -MAX_STREAK_LOOKBACK_DAYS), today);
+    return meds.map((m) => computeAdherence(doses, m.id, today, this.timeZone, windowDays));
   }
 
   async getNotifiedDoseKeys(): Promise<string[]> {

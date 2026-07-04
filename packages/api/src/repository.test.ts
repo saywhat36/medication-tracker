@@ -348,6 +348,102 @@ export function runRepositoryTests(
       expect(statuses.find((s) => s.medicationId === 'med-prior')?.pillsRemaining).toBe(20);
     });
   });
+
+  describe('getDosesInRange', () => {
+    it('includes doses on both boundary dates (inclusive)', async () => {
+      const repo = await makeRepo();
+      await repo.addDoses([
+        { medicationId: 'med-1', scheduledFor: '2026-06-20T08:00:00Z', takenAt: null },
+        { medicationId: 'med-1', scheduledFor: '2026-06-23T08:00:00Z', takenAt: null },
+      ]);
+      const doses = await repo.getDosesInRange('2026-06-20', '2026-06-23');
+      const scheduled = doses.map((d) => d.scheduledFor).sort();
+      expect(scheduled).toEqual(['2026-06-20T08:00:00Z', '2026-06-23T08:00:00Z']);
+    });
+
+    it('excludes doses scheduled outside the given range', async () => {
+      const repo = await makeRepo();
+      // SEED_DOSES are both scheduled on 2026-06-25 — an earlier range should
+      // return none of them.
+      const doses = await repo.getDosesInRange('2026-06-01', '2026-06-10');
+      expect(doses).toHaveLength(0);
+    });
+  });
+
+  describe('getAdherenceStatuses', () => {
+    it('returns zero-history stats for a medication with no doses recorded', async () => {
+      const repo = await makeRepo();
+      await repo.addMedication({
+        id: 'med-no-doses',
+        name: 'New Med',
+        pillsAtPickup: 30,
+        lastPickupDate: '2026-06-25',
+        dosesPerDay: 1,
+        refillLeadTimeDays: 7,
+        schedule: ['08:00'],
+      });
+      const statuses = await repo.getAdherenceStatuses('2026-06-25');
+      const status = statuses.find((s) => s.medicationId === 'med-no-doses');
+      expect(status).toEqual({
+        medicationId: 'med-no-doses',
+        windowDays: 30,
+        scheduledCount: 0,
+        takenCount: 0,
+        adherencePercentage: null,
+        currentStreakDays: 0,
+      });
+    });
+
+    it('computes currentStreakDays across consecutive fully-taken days', async () => {
+      const repo = await makeRepo();
+      await repo.addDoses([
+        { medicationId: 'med-1', scheduledFor: '2026-06-22T08:00:00Z', takenAt: '2026-06-22T08:05:00Z' },
+        { medicationId: 'med-1', scheduledFor: '2026-06-23T08:00:00Z', takenAt: '2026-06-23T08:05:00Z' },
+        { medicationId: 'med-1', scheduledFor: '2026-06-24T08:00:00Z', takenAt: '2026-06-24T08:05:00Z' },
+      ]);
+      const statuses = await repo.getAdherenceStatuses('2026-06-25');
+      const status = statuses.find((s) => s.medicationId === 'med-1');
+      expect(status?.currentStreakDays).toBe(3);
+    });
+
+    it('resets currentStreakDays at a day with no scheduled doses', async () => {
+      const repo = await makeRepo();
+      // 06-24 taken, then a gap on 06-23 with no dose at all, then 06-22 taken.
+      // The gap should stop the walk rather than being skipped over.
+      await repo.addDoses([
+        { medicationId: 'med-1', scheduledFor: '2026-06-24T08:00:00Z', takenAt: '2026-06-24T08:05:00Z' },
+        { medicationId: 'med-1', scheduledFor: '2026-06-22T08:00:00Z', takenAt: '2026-06-22T08:05:00Z' },
+      ]);
+      const statuses = await repo.getAdherenceStatuses('2026-06-25');
+      const status = statuses.find((s) => s.medicationId === 'med-1');
+      expect(status?.currentStreakDays).toBe(1);
+    });
+
+    it('resets currentStreakDays at a day where a dose was missed', async () => {
+      const repo = await makeRepo();
+      await repo.addDoses([
+        { medicationId: 'med-1', scheduledFor: '2026-06-24T08:00:00Z', takenAt: '2026-06-24T08:05:00Z' },
+        { medicationId: 'med-1', scheduledFor: '2026-06-23T08:00:00Z', takenAt: null }, // missed
+        { medicationId: 'med-1', scheduledFor: '2026-06-22T08:00:00Z', takenAt: '2026-06-22T08:05:00Z' },
+      ]);
+      const statuses = await repo.getAdherenceStatuses('2026-06-25');
+      const status = statuses.find((s) => s.medicationId === 'med-1');
+      expect(status?.currentStreakDays).toBe(1);
+    });
+
+    it("does not let today's still-pending doses affect currentStreakDays", async () => {
+      const repo = await makeRepo();
+      // SEED_DOSES already schedules med-1's doses today (2026-06-25) with
+      // takenAt: null (pending) — the streak walk starts at yesterday, so
+      // those pending doses should neither extend nor break the streak.
+      await repo.addDoses([
+        { medicationId: 'med-1', scheduledFor: '2026-06-24T08:00:00Z', takenAt: '2026-06-24T08:05:00Z' },
+      ]);
+      const statuses = await repo.getAdherenceStatuses('2026-06-25');
+      const status = statuses.find((s) => s.medicationId === 'med-1');
+      expect(status?.currentStreakDays).toBe(1);
+    });
+  });
 }
 
 // Run the shared suite against the in-memory implementation.
@@ -366,5 +462,17 @@ describe('InMemoryMedicationRepository with a timezone', () => {
     expect(doses).toHaveLength(1);
     expect(doses[0].scheduledFor).toBe('2026-06-27T07:00:00Z');
     expect(await repo.getDosesForDay('2026-06-27')).toHaveLength(1);
+  });
+
+  it('buckets getDosesInRange by local day across the UTC midnight boundary', async () => {
+    const med = { ...SEED_MED, schedule: ['00:30'] };
+    const repo = new InMemoryMedicationRepository([med], [], 'Europe/London');
+    // 00:30 local (BST, UTC+1) on 2026-06-27 is 2026-06-26T23:30:00Z — a UTC
+    // calendar day earlier than the local day it belongs to.
+    const doses = await repo.ensureDosesForDay('2026-06-27');
+    expect(doses[0].scheduledFor).toBe('2026-06-26T23:30:00Z');
+
+    expect(await repo.getDosesInRange('2026-06-27', '2026-06-27')).toHaveLength(1);
+    expect(await repo.getDosesInRange('2026-06-26', '2026-06-26')).toHaveLength(0);
   });
 });

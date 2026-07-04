@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
+import type { Dose, Medication, MedicationAdherence, RefillStatus } from '@medication-tracker/core';
 import { isEveningNow } from '@/lib/evening';
 import { skyPhaseNow } from '@/lib/skyPhase';
 import { useMediaQuery } from '@/lib/useMediaQuery';
@@ -14,6 +14,7 @@ import { toBottles } from './bottleData';
 interface Props {
   medications: Medication[];
   refillStatuses: RefillStatus[];
+  adherenceStatuses: MedicationAdherence[];
   doses: Dose[];
   onDoseTaken: (medicationId: string, scheduledFor: string) => void;
   onDoseUntaken: (medicationId: string, scheduledFor: string) => void;
@@ -30,6 +31,7 @@ interface Props {
 export function ShopView({
   medications,
   refillStatuses,
+  adherenceStatuses,
   doses,
   onDoseTaken,
   onDoseUntaken,
@@ -162,7 +164,11 @@ export function ShopView({
                   onPillTaken={flyPill}
                   evening={evening}
                 />
-                <RememberNote medications={medications} statuses={refillStatuses} />
+                <RememberNote
+                  medications={medications}
+                  statuses={refillStatuses}
+                  adherenceStatuses={adherenceStatuses}
+                />
               </div>
               <p className="mt-5 text-center">
                 <button

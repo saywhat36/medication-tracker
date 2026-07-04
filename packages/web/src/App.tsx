@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { Dose, Medication, RefillStatus } from '@medication-tracker/core';
+import type { Dose, Medication, MedicationAdherence, RefillStatus } from '@medication-tracker/core';
 import { api } from '@/api';
 import { ApiError } from '@/apiClient';
 import { AddMedicationForm } from '@/components/AddMedicationForm';
+import { AdherenceList } from '@/components/AdherenceList';
 import { DoseList } from '@/components/DoseList';
 import { LoginForm } from '@/components/LoginForm';
 import { MedicationList } from '@/components/MedicationList';
@@ -16,6 +17,7 @@ export default function App() {
   const [medications, setMedications] = useState<Medication[]>([]);
   const [dueDoses, setDueDoses] = useState<Dose[]>([]);
   const [refillStatuses, setRefillStatuses] = useState<RefillStatus[]>([]);
+  const [adherenceStatuses, setAdherenceStatuses] = useState<MedicationAdherence[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [needsLogin, setNeedsLogin] = useState(false);
@@ -24,11 +26,17 @@ export default function App() {
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    Promise.all([api.getMedications(), api.getTodaysDoses(), api.getRefillStatuses()])
-      .then(([meds, doses, statuses]) => {
+    Promise.all([
+      api.getMedications(),
+      api.getTodaysDoses(),
+      api.getRefillStatuses(),
+      api.getAdherenceStatuses(),
+    ])
+      .then(([meds, doses, statuses, adherence]) => {
         setMedications(meds);
         setDueDoses(doses);
         setRefillStatuses(statuses);
+        setAdherenceStatuses(adherence);
         setNeedsLogin(false);
       })
       .catch((err: unknown) => {
@@ -68,9 +76,14 @@ export default function App() {
 
   function handleMedicationAdded(med: Medication) {
     setMedications((prev) => [...prev, med]);
-    void Promise.all([api.getTodaysDoses(), api.getRefillStatuses()]).then(([doses, statuses]) => {
+    void Promise.all([
+      api.getTodaysDoses(),
+      api.getRefillStatuses(),
+      api.getAdherenceStatuses(),
+    ]).then(([doses, statuses, adherence]) => {
       setDueDoses(doses);
       setRefillStatuses(statuses);
+      setAdherenceStatuses(adherence);
     });
   }
 
@@ -83,20 +96,29 @@ export default function App() {
 
   function handleMedicationDeleted(id: string) {
     setMedications((prev) => prev.filter((m) => m.id !== id));
-    void Promise.all([api.getTodaysDoses(), api.getRefillStatuses()]).then(([doses, statuses]) => {
+    void Promise.all([
+      api.getTodaysDoses(),
+      api.getRefillStatuses(),
+      api.getAdherenceStatuses(),
+    ]).then(([doses, statuses, adherence]) => {
       setDueDoses(doses);
       setRefillStatuses(statuses);
+      setAdherenceStatuses(adherence);
     });
   }
 
   function handleMedicationUpdated() {
-    void Promise.all([api.getMedications(), api.getTodaysDoses(), api.getRefillStatuses()]).then(
-      ([meds, doses, statuses]) => {
-        setMedications(meds);
-        setDueDoses(doses);
-        setRefillStatuses(statuses);
-      }
-    );
+    void Promise.all([
+      api.getMedications(),
+      api.getTodaysDoses(),
+      api.getRefillStatuses(),
+      api.getAdherenceStatuses(),
+    ]).then(([meds, doses, statuses, adherence]) => {
+      setMedications(meds);
+      setDueDoses(doses);
+      setRefillStatuses(statuses);
+      setAdherenceStatuses(adherence);
+    });
   }
 
   if (needsLogin) {
@@ -124,6 +146,7 @@ export default function App() {
       <ShopView
         medications={medications}
         refillStatuses={refillStatuses}
+        adherenceStatuses={adherenceStatuses}
         doses={dueDoses}
         onDoseTaken={handleTaken}
         onDoseUntaken={handleUntaken}
@@ -194,6 +217,13 @@ export default function App() {
           Refill status
         </h2>
         <RefillList statuses={refillStatuses} medications={medications} />
+      </section>
+
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+          Adherence
+        </h2>
+        <AdherenceList statuses={adherenceStatuses} medications={medications} />
       </section>
 
       <section>

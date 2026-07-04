@@ -1,4 +1,5 @@
 import type { Medication, RefillStatus } from './types.js';
+import { addDaysToDate } from './time.js';
 
 // Pills physically left = what you picked up, minus doses already taken before
 // the app started tracking (entered at registration), minus doses ticked off
@@ -21,21 +22,15 @@ export function daysUntilRefill(med: Medication, takenSincePickup: number): numb
   return daysOfSupply(med, takenSincePickup) - med.refillLeadTimeDays;
 }
 
-function addDays(date: string, days: number): string {
-  const d = new Date(date);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
 // The date the pills are expected to run out (assuming scheduled use from today).
 export function runOutDate(med: Medication, takenSincePickup: number, today: string): string {
-  return addDays(today, daysOfSupply(med, takenSincePickup));
+  return addDaysToDate(today, daysOfSupply(med, takenSincePickup));
 }
 
 // The date you should reorder by (lead time before running out). This is also
 // when a refill reminder would be due.
 export function refillDate(med: Medication, takenSincePickup: number, today: string): string {
-  return addDays(today, daysUntilRefill(med, takenSincePickup));
+  return addDaysToDate(today, daysUntilRefill(med, takenSincePickup));
 }
 
 export function getRefillStatus(
