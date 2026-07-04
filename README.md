@@ -4,7 +4,11 @@ A personal medication-tracking app. Tracks pills remaining, daily doses, and sch
 
 ## Status
 
-Work in progress — see [PLAN.md](./PLAN.md) for the build plan.
+Work in progress. [PLAN.md](./PLAN.md) is the original build plan (mostly
+complete); [SCOPE.md](./SCOPE.md) says what the app currently is/isn't;
+[CLAUDE.md](./CLAUDE.md) is the operational guide for AI-assisted
+contributions (architecture invariants, verification steps, deploy/env var
+conventions); [DEPLOY.md](./DEPLOY.md) covers hosting the API on Render.
 
 ## Getting started
 
