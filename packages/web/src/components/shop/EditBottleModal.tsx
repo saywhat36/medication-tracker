@@ -2,12 +2,14 @@ import { useState } from 'react';
 import type { Medication } from '@medication-tracker/core';
 import { api } from '@/api';
 import { MedicationForm } from '@/components/MedicationForm';
+import { BottleColorPicker } from './BottleColorPicker';
 import { ParchmentModal } from './ParchmentModal';
 
 interface Props {
   medication: Medication;
   pillsRemaining: number;
   onSaved: () => void;
+  onColorChanged: () => void;
   onDeleted: () => void;
   onClose: () => void;
 }
@@ -15,7 +17,14 @@ interface Props {
 // The pop-up you get from double-clicking a bottle: the medication edit form
 // on a sheet of parchment, plus a way to take the bottle off the shelf for
 // good. Same save/delete flows as classic view.
-export function EditBottleModal({ medication, pillsRemaining, onSaved, onDeleted, onClose }: Props) {
+export function EditBottleModal({
+  medication,
+  pillsRemaining,
+  onSaved,
+  onColorChanged,
+  onDeleted,
+  onClose,
+}: Props) {
   const [deleting, setDeleting] = useState(false);
 
   async function handleDelete() {
@@ -46,6 +55,7 @@ export function EditBottleModal({ medication, pillsRemaining, onSaved, onDeleted
         }}
         onCancel={onClose}
       />
+      <BottleColorPicker medication={medication} onChanged={onColorChanged} />
       <div className="mt-3 border-t border-apothecary-parchment-edge pt-2 text-center">
         <button
           onClick={() => void handleDelete()}
