@@ -1,4 +1,4 @@
-export type { Medication, Dose, RefillStatus, MedicationAdherence } from './types.js';
+export type { Medication, Dose, RefillStatus, MedicationAdherence, PillCustomization } from './types.js';
 export {
   pillsRemaining,
   daysOfSupply,

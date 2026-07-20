@@ -11,7 +11,13 @@ import {
   addDaysToDate,
   MAX_STREAK_LOOKBACK_DAYS,
 } from '@medication-tracker/core';
-import type { Dose, Medication, MedicationAdherence, RefillStatus } from '@medication-tracker/core';
+import type {
+  Dose,
+  Medication,
+  MedicationAdherence,
+  PillCustomization,
+  RefillStatus,
+} from '@medication-tracker/core';
 import type { MedicationRepository } from './repository.js';
 
 const SCHEMA = `
@@ -26,7 +32,9 @@ const SCHEMA = `
     schedule             TEXT NOT NULL,
     recipient_email      TEXT,
     recipient_name       TEXT,
-    companion_emails     TEXT NOT NULL DEFAULT '[]'
+    companion_emails     TEXT NOT NULL DEFAULT '[]',
+    custom_bottle_color  TEXT,
+    pill_customizations  TEXT
   );
   CREATE TABLE IF NOT EXISTS doses (
     medication_id TEXT NOT NULL,
@@ -49,6 +57,8 @@ function ensureRecipientColumns(db: DatabaseSync): void {
     'ALTER TABLE medications ADD COLUMN recipient_email TEXT',
     'ALTER TABLE medications ADD COLUMN recipient_name TEXT',
     "ALTER TABLE medications ADD COLUMN companion_emails TEXT NOT NULL DEFAULT '[]'",
+    'ALTER TABLE medications ADD COLUMN custom_bottle_color TEXT',
+    'ALTER TABLE medications ADD COLUMN pill_customizations TEXT',
   ]) {
     try {
       db.exec(stmt);
@@ -76,8 +86,8 @@ export class SqliteMedicationRepository implements MedicationRepository {
   private insertMedication(med: Medication): void {
     this.db
       .prepare(
-        `INSERT INTO medications (id, name, pills_at_pickup, last_pickup_date, prior_doses_taken, doses_per_day, refill_lead_time_days, schedule, recipient_email, recipient_name, companion_emails)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO medications (id, name, pills_at_pickup, last_pickup_date, prior_doses_taken, doses_per_day, refill_lead_time_days, schedule, recipient_email, recipient_name, companion_emails, custom_bottle_color, pill_customizations)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         med.id,
@@ -90,7 +100,9 @@ export class SqliteMedicationRepository implements MedicationRepository {
         JSON.stringify(med.schedule),
         med.recipientEmail ?? null,
         med.recipientName ?? null,
-        JSON.stringify(med.companionEmails ?? [])
+        JSON.stringify(med.companionEmails ?? []),
+        med.customBottleColor ?? null,
+        med.pillCustomizations ? JSON.stringify(med.pillCustomizations) : null
       );
   }
 
@@ -119,7 +131,7 @@ export class SqliteMedicationRepository implements MedicationRepository {
   async updateMedication(med: Medication): Promise<void> {
     const result = this.db
       .prepare(
-        `UPDATE medications SET name = ?, pills_at_pickup = ?, last_pickup_date = ?, prior_doses_taken = ?, doses_per_day = ?, refill_lead_time_days = ?, schedule = ?, recipient_email = ?, recipient_name = ?, companion_emails = ? WHERE id = ?`
+        `UPDATE medications SET name = ?, pills_at_pickup = ?, last_pickup_date = ?, prior_doses_taken = ?, doses_per_day = ?, refill_lead_time_days = ?, schedule = ?, recipient_email = ?, recipient_name = ?, companion_emails = ?, custom_bottle_color = ?, pill_customizations = ? WHERE id = ?`
       )
       .run(
         med.name,
@@ -132,6 +144,8 @@ export class SqliteMedicationRepository implements MedicationRepository {
         med.recipientEmail ?? null,
         med.recipientName ?? null,
         JSON.stringify(med.companionEmails ?? []),
+        med.customBottleColor ?? null,
+        med.pillCustomizations ? JSON.stringify(med.pillCustomizations) : null,
         med.id
       );
     if ((result as { changes: number }).changes === 0) {
@@ -268,6 +282,10 @@ function toMedication(row: Record<string, unknown>): Medication {
     recipientEmail: (row['recipient_email'] as string | null) ?? null,
     recipientName: (row['recipient_name'] as string | null) ?? null,
     companionEmails: JSON.parse((row['companion_emails'] as string | null) ?? '[]') as string[],
+    customBottleColor: (row['custom_bottle_color'] as string | null) ?? undefined,
+    pillCustomizations: row['pill_customizations']
+      ? (JSON.parse(row['pill_customizations'] as string) as PillCustomization[])
+      : undefined,
   };
 }
 

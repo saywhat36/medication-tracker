@@ -12,7 +12,13 @@ import {
   addDaysToDate,
   MAX_STREAK_LOOKBACK_DAYS,
 } from '@medication-tracker/core';
-import type { Dose, Medication, MedicationAdherence, RefillStatus } from '@medication-tracker/core';
+import type {
+  Dose,
+  Medication,
+  MedicationAdherence,
+  PillCustomization,
+  RefillStatus,
+} from '@medication-tracker/core';
 import type { MedicationRepository } from './repository.js';
 
 const { Pool: PgPool } = pg;
@@ -50,8 +56,8 @@ export class PostgresMedicationRepository implements MedicationRepository {
 
   async addMedication(med: Medication): Promise<void> {
     await this.pool.query(
-      `INSERT INTO medications (id, name, pills_at_pickup, last_pickup_date, prior_doses_taken, doses_per_day, refill_lead_time_days, schedule, recipient_email, recipient_name, companion_emails)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      `INSERT INTO medications (id, name, pills_at_pickup, last_pickup_date, prior_doses_taken, doses_per_day, refill_lead_time_days, schedule, recipient_email, recipient_name, companion_emails, custom_bottle_color, pill_customizations)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
       [
         med.id,
         med.name,
@@ -64,6 +70,8 @@ export class PostgresMedicationRepository implements MedicationRepository {
         med.recipientEmail ?? null,
         med.recipientName ?? null,
         JSON.stringify(med.companionEmails ?? []),
+        med.customBottleColor ?? null,
+        med.pillCustomizations ? JSON.stringify(med.pillCustomizations) : null,
       ]
     );
   }
@@ -78,7 +86,7 @@ export class PostgresMedicationRepository implements MedicationRepository {
 
   async updateMedication(med: Medication): Promise<void> {
     const result = await this.pool.query(
-      `UPDATE medications SET name = $1, pills_at_pickup = $2, last_pickup_date = $3, prior_doses_taken = $4, doses_per_day = $5, refill_lead_time_days = $6, schedule = $7, recipient_email = $8, recipient_name = $9, companion_emails = $10 WHERE id = $11`,
+      `UPDATE medications SET name = $1, pills_at_pickup = $2, last_pickup_date = $3, prior_doses_taken = $4, doses_per_day = $5, refill_lead_time_days = $6, schedule = $7, recipient_email = $8, recipient_name = $9, companion_emails = $10, custom_bottle_color = $11, pill_customizations = $12 WHERE id = $13`,
       [
         med.name,
         med.pillsAtPickup,
@@ -90,6 +98,8 @@ export class PostgresMedicationRepository implements MedicationRepository {
         med.recipientEmail ?? null,
         med.recipientName ?? null,
         JSON.stringify(med.companionEmails ?? []),
+        med.customBottleColor ?? null,
+        med.pillCustomizations ? JSON.stringify(med.pillCustomizations) : null,
         med.id,
       ]
     );
@@ -224,6 +234,10 @@ function toMedication(row: Record<string, unknown>): Medication {
     recipientEmail: (row['recipient_email'] as string | null) ?? null,
     recipientName: (row['recipient_name'] as string | null) ?? null,
     companionEmails: JSON.parse((row['companion_emails'] as string | null) ?? '[]') as string[],
+    customBottleColor: (row['custom_bottle_color'] as string | null) ?? undefined,
+    pillCustomizations: row['pill_customizations']
+      ? (JSON.parse(row['pill_customizations'] as string) as PillCustomization[])
+      : undefined,
   };
 }
 

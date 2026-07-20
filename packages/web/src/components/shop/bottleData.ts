@@ -1,4 +1,4 @@
-import type { Medication, RefillStatus } from '@medication-tracker/core';
+import type { Medication, PillCustomization, RefillStatus } from '@medication-tracker/core';
 // Relative import (not @/) so this module also resolves under the root vitest
 // run, which doesn't know the web package's path alias.
 import { bottleContents } from '../../theme/apothecary.js';
@@ -11,6 +11,8 @@ export interface BottleData {
   name: string;
   pillsRemaining: number;
   color: string;
+  customBottleColor?: string;
+  pillCustomizations?: PillCustomization[];
 }
 
 // Deterministic name → contents color, so a medication keeps its color
@@ -28,6 +30,8 @@ export function toBottles(medications: Medication[], statuses: RefillStatus[]): 
     id: med.id,
     name: med.name,
     pillsRemaining: statuses.find((s) => s.medicationId === med.id)?.pillsRemaining ?? 0,
-    color: contentColorFor(med.name),
+    color: med.customBottleColor ?? contentColorFor(med.name),
+    customBottleColor: med.customBottleColor,
+    pillCustomizations: med.pillCustomizations,
   }));
 }

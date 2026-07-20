@@ -62,4 +62,15 @@ describe('toBottles', () => {
     const bottles = toBottles(meds, []);
     expect(bottles.map((b) => b.id)).toEqual(['a', 'b']);
   });
+
+  it('should use a custom bottle color over the deterministic default when set', () => {
+    const bottles = toBottles([med({ customBottleColor: '#FF5733' })], [status({})]);
+    expect(bottles[0]).toMatchObject({ color: '#FF5733', customBottleColor: '#FF5733' });
+  });
+
+  it('should carry pill customizations through to the bottle', () => {
+    const pillCustomizations = [{ emoji: '💊', textLabel: 'Morning' }];
+    const bottles = toBottles([med({ pillCustomizations })], [status({})]);
+    expect(bottles[0]?.pillCustomizations).toEqual(pillCustomizations);
+  });
 });
