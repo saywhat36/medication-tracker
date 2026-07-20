@@ -77,13 +77,68 @@
   }
 }
 
+/* The candle's resting state: a slow, gentle waver so the flame reads as
+   alive even when nobody's pointer is near it. Hover swaps in the sharper
+   candle-flicker above, at higher specificity. */
+@keyframes candle-flicker-ambient {
+  0%,
+  100% {
+    transform: scaleY(1) scaleX(1) translateX(0);
+  }
+  25% {
+    transform: scaleY(1.05) scaleX(0.98) translateX(0.3px);
+  }
+  50% {
+    transform: scaleY(0.96) scaleX(1.03) translateX(-0.3px);
+  }
+  75% {
+    transform: scaleY(1.03) scaleX(0.99) translateX(0.2px);
+  }
+}
+
 .candle-flame {
   transform-box: fill-box;
   transform-origin: 50% 100%;
+  animation: candle-flicker-ambient 3.2s ease-in-out infinite;
 }
 
 .candle:hover .candle-flame {
   animation: candle-flicker 160ms ease-in-out infinite alternate;
+}
+
+/* The flame's inner core pulses independently, so the glow itself breathes. */
+@keyframes candle-core-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.candle-flame-core {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: candle-core-pulse 1.6s ease-in-out infinite;
+}
+
+/* A light breeze through the hanging foliage — each strand sways slowly
+   around its anchor point, staggered so they don't move in lockstep. */
+@keyframes leaf-sway {
+  0%,
+  100% {
+    transform: rotate(-1.5deg);
+  }
+  50% {
+    transform: rotate(1.5deg);
+  }
+}
+
+.leaf-sway {
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+  animation: leaf-sway 5s ease-in-out infinite;
 }
 
 /* The DISPENSED stamp thumping down when the day's last dose is ticked. */
@@ -109,6 +164,9 @@
 @media (prefers-reduced-motion: reduce) {
   .stamp-thunk,
   .candle:hover .candle-flame,
+  .candle-flame,
+  .candle-flame-core,
+  .leaf-sway,
   .ink-draw {
     animation: none;
   }

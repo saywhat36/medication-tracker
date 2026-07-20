@@ -105,7 +105,14 @@ export function ShopScene({ bottles, selectedId, onSelect, onEdit, compact, even
         <line x1={candle.x} y1={candle.y - 42} x2={candle.x} y2={candle.y - 48} stroke={wood.wall} strokeWidth="1.5" />
         <g className="candle-flame">
           <ellipse cx={candle.x} cy={candleFlameY} rx="5" ry="10" fill={flame.DEFAULT} />
-          <ellipse cx={candle.x} cy={candleFlameY + 3} rx="2.5" ry="5" fill={flame.core} />
+          <ellipse
+            className="candle-flame-core"
+            cx={candle.x}
+            cy={candleFlameY + 3}
+            rx="2.5"
+            ry="5"
+            fill={flame.core}
+          />
         </g>
       </g>
 
