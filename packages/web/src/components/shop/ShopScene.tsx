@@ -35,6 +35,18 @@ export function ShopScene({ bottles, selectedId, onSelect, onEdit, compact, even
 
   return (
     <svg width="100%" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={label}>
+      <defs>
+        {/* Off-centre highlight so the glass reads as curved, not flat. */}
+        <radialGradient id="shop-glass-gradient" cx="30%" cy="25%" r="85%">
+          <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.3" />
+          <stop offset="55%" stopColor={glass.DEFAULT} stopOpacity="0.16" />
+          <stop offset="100%" stopColor={glass.DEFAULT} stopOpacity="0.08" />
+        </radialGradient>
+        <linearGradient id="shop-cap-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#4A433D" />
+          <stop offset="100%" stopColor={glass.metal} />
+        </linearGradient>
+      </defs>
       <rect x="0" y="0" width={width} height={tableY} fill={wood.wall} />
 
       <WindowView box={layout.windowBox} phase={phase} />

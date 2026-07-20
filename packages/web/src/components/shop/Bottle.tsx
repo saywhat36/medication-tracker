@@ -91,15 +91,19 @@ export function Bottle({ bottle, x, shelfY, selected, onSelect, onEdit }: Props)
         />
       )}
       {pillPositions(bottle.pillsRemaining).map(({ cx, cy }, i) => (
-        <circle
-          key={i}
-          cx={cx}
-          cy={cy}
-          r={PILL_RADIUS}
-          fill={bottle.color}
-          stroke="#000000"
-          strokeOpacity="0.2"
-        />
+        <g key={i}>
+          <circle
+            cx={cx}
+            cy={cy}
+            r={PILL_RADIUS}
+            fill={bottle.color}
+            stroke="#000000"
+            strokeOpacity="0.25"
+            strokeWidth="1"
+          />
+          {/* Small offset highlight so each pill reads as a rounded bead, not a flat disc. */}
+          <circle cx={cx - 1.4} cy={cy - 1.4} r={PILL_RADIUS * 0.35} fill="#FFFFFF" fillOpacity="0.35" />
+        </g>
       ))}
       <rect
         x="-34"
@@ -107,8 +111,7 @@ export function Bottle({ bottle, x, shelfY, selected, onSelect, onEdit }: Props)
         width="68"
         height="86"
         rx="8"
-        fill={glass.DEFAULT}
-        fillOpacity="0.16"
+        fill="url(#shop-glass-gradient)"
         stroke={glass.DEFAULT}
         strokeOpacity="0.45"
       />
@@ -122,8 +125,27 @@ export function Bottle({ bottle, x, shelfY, selected, onSelect, onEdit }: Props)
         stroke={glass.DEFAULT}
         strokeOpacity="0.4"
       />
-      <rect x="-17" y="-113" width="34" height="13" rx="3" fill={glass.metal} />
+      {/* Cap: knurled band under a slightly domed top for a screw-cap silhouette. */}
+      <rect x="-17" y="-113" width="34" height="13" rx="3" fill="url(#shop-cap-gradient)" />
+      <path
+        d="M-14 -113 L-14 -108 M-8 -113 L-8 -108 M-2 -113 L-2 -108 M4 -113 L4 -108 M10 -113 L10 -108"
+        stroke="#000000"
+        strokeOpacity="0.2"
+        strokeWidth="1"
+      />
+      <ellipse cx="0" cy="-113" rx="17" ry="3.5" fill={glass.metal} />
+      <ellipse cx="0" cy="-114" rx="17" ry="2.5" fill="#FFFFFF" fillOpacity="0.15" />
       <circle cx="0" cy="-117" r="4" fill={glass.metal} />
+      {/* Glass shine: a soft diagonal streak, distinct from the per-pill highlight above. */}
+      <ellipse
+        cx="-22"
+        cy="-68"
+        rx="6"
+        ry="20"
+        fill="#FFFFFF"
+        fillOpacity="0.16"
+        transform="rotate(-8 -22 -68)"
+      />
       <line
         x1="-24"
         y1="-78"
