@@ -10,6 +10,15 @@ export interface Medication {
   recipientEmail?: string | null; // who takes this medication, for dose reminders (optional)
   recipientName?: string | null;  // first name, used in companion emails, e.g. "Sarah needs to take..."
   companionEmails?: string[];     // others notified if a dose is missed (optional, default [])
+  customBottleColor?: string;         // HEX color for the apothecary shop bottle appearance (optional)
+  pillCustomizations?: PillCustomization[]; // per-pill appearance, indexed by pill age, 0 = oldest (optional)
+}
+
+export interface PillCustomization {
+  emoji?: string;        // single emoji rendered on the pill, e.g. "💊"
+  textLabel?: string;    // short text label
+  customColor?: string;  // HEX color override for this pill
+  drawingData?: string;  // freehand drawing, PNG data URL
 }
 
 export interface Dose {

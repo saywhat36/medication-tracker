@@ -94,6 +94,48 @@ export function runRepositoryTests(
     });
   });
 
+  describe('bottle customization', () => {
+    it('round-trips a custom bottle color and pill customizations through addMedication', async () => {
+      const repo = await makeRepo();
+      await repo.addMedication({
+        id: 'med-custom',
+        name: 'Vitamin D',
+        pillsAtPickup: 30,
+        lastPickupDate: '2026-06-25',
+        dosesPerDay: 1,
+        refillLeadTimeDays: 7,
+        schedule: ['09:00'],
+        customBottleColor: '#FF5733',
+        pillCustomizations: [
+          { emoji: '💊', textLabel: 'Morning', customColor: '#7B6BA8' },
+          { emoji: '⭐', customColor: '#FFD700' },
+        ],
+      });
+      const med = (await repo.listMedications()).find((m) => m.id === 'med-custom');
+      expect(med?.customBottleColor).toBe('#FF5733');
+      expect(med?.pillCustomizations).toEqual([
+        { emoji: '💊', textLabel: 'Morning', customColor: '#7B6BA8' },
+        { emoji: '⭐', customColor: '#FFD700' },
+      ]);
+    });
+
+    it('defaults to no custom bottle color and no pill customizations when omitted', async () => {
+      const repo = await makeRepo();
+      const meds = await repo.listMedications();
+      const med = meds.find((m) => m.id === 'med-1');
+      expect(med?.customBottleColor).toBeUndefined();
+      expect(med?.pillCustomizations).toBeUndefined();
+    });
+
+    it('updates pill customizations via updateMedication without affecting other fields', async () => {
+      const repo = await makeRepo();
+      await repo.updateMedication({ ...SEED_MED, pillCustomizations: [{ emoji: '💊' }] });
+      const med = (await repo.listMedications()).find((m) => m.id === 'med-1');
+      expect(med?.pillCustomizations).toEqual([{ emoji: '💊' }]);
+      expect(med?.name).toBe(SEED_MED.name);
+    });
+  });
+
   describe('deleteMedication', () => {
     it('removes the medication from listMedications', async () => {
       const repo = await makeRepo();
