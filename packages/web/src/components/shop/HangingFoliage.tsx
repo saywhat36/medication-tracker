@@ -40,7 +40,7 @@ export function HangingFoliage({ width, baseline }: Props) {
         const top = baseline - 14;
         const bottom = top + s.len;
         return (
-          <g key={`v${i}`}>
+          <g key={`v${i}`} className="leaf-sway" style={{ animationDelay: `${i * 0.4}s` }}>
             <path
               d={`M${s.x} ${top} Q${s.x + 6} ${(top + bottom) / 2} ${s.x} ${bottom}`}
               fill="none"
