@@ -167,10 +167,14 @@
   .candle-flame,
   .candle-flame-core,
   .leaf-sway,
+  .pill-pop,
   .ink-draw {
     animation: none;
   }
   .stamp-thunk {
     transform: rotate(-12deg);
+  }
+  .pill-pop {
+    display: none;
   }
 }
