@@ -107,6 +107,16 @@ export function Bottle({ bottle, x, shelfY, selected, onSelect, onEdit }: Props)
             />
             {/* Small offset highlight so each pill reads as a rounded bead, not a flat disc. */}
             <circle cx={cx - 1.4} cy={cy - 1.4} r={PILL_RADIUS * 0.35} fill="#FFFFFF" fillOpacity="0.35" />
+            {custom?.drawingData && (
+              <image
+                href={custom.drawingData}
+                x={cx - PILL_RADIUS}
+                y={cy - PILL_RADIUS}
+                width={PILL_RADIUS * 2}
+                height={PILL_RADIUS * 2}
+                style={{ clipPath: 'circle(50%)' }}
+              />
+            )}
             {custom?.emoji && (
               <text x={cx} y={cy + 2.5} textAnchor="middle" fontSize="7">
                 {custom.emoji}
