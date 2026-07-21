@@ -18,7 +18,9 @@ interface Props {
 // from the bottom, up to the bottle's shoulders. Beyond 32 the jar simply
 // looks full — like a real bottle, you can't see past the front layer.
 const PILL_RADIUS = 5;
-const MAX_VISIBLE_PILLS = 32;
+// Exported so the pill customization panel knows how many jar positions are
+// actually visible/editable — customizing beyond this would never render.
+export const MAX_VISIBLE_PILLS = 32;
 
 function pillPositions(count: number): { cx: number; cy: number }[] {
   const positions: { cx: number; cy: number }[] = [];
@@ -90,21 +92,29 @@ export function Bottle({ bottle, x, shelfY, selected, onSelect, onEdit }: Props)
           strokeWidth="2.5"
         />
       )}
-      {pillPositions(bottle.pillsRemaining).map(({ cx, cy }, i) => (
-        <g key={i}>
-          <circle
-            cx={cx}
-            cy={cy}
-            r={PILL_RADIUS}
-            fill={bottle.color}
-            stroke="#000000"
-            strokeOpacity="0.25"
-            strokeWidth="1"
-          />
-          {/* Small offset highlight so each pill reads as a rounded bead, not a flat disc. */}
-          <circle cx={cx - 1.4} cy={cy - 1.4} r={PILL_RADIUS * 0.35} fill="#FFFFFF" fillOpacity="0.35" />
-        </g>
-      ))}
+      {pillPositions(bottle.pillsRemaining).map(({ cx, cy }, i) => {
+        const custom = bottle.pillCustomizations?.[i];
+        return (
+          <g key={i}>
+            <circle
+              cx={cx}
+              cy={cy}
+              r={PILL_RADIUS}
+              fill={custom?.customColor ?? bottle.color}
+              stroke="#000000"
+              strokeOpacity="0.25"
+              strokeWidth="1"
+            />
+            {/* Small offset highlight so each pill reads as a rounded bead, not a flat disc. */}
+            <circle cx={cx - 1.4} cy={cy - 1.4} r={PILL_RADIUS * 0.35} fill="#FFFFFF" fillOpacity="0.35" />
+            {custom?.emoji && (
+              <text x={cx} y={cy + 2.5} textAnchor="middle" fontSize="7">
+                {custom.emoji}
+              </text>
+            )}
+          </g>
+        );
+      })}
       <rect
         x="-34"
         y="-86"

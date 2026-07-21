@@ -4,12 +4,13 @@ import { api } from '@/api';
 import { MedicationForm } from '@/components/MedicationForm';
 import { BottleColorPicker } from './BottleColorPicker';
 import { ParchmentModal } from './ParchmentModal';
+import { PillCustomizationPanel } from './PillCustomizationPanel';
 
 interface Props {
   medication: Medication;
   pillsRemaining: number;
   onSaved: () => void;
-  onColorChanged: () => void;
+  onCustomizationChanged: () => void;
   onDeleted: () => void;
   onClose: () => void;
 }
@@ -21,7 +22,7 @@ export function EditBottleModal({
   medication,
   pillsRemaining,
   onSaved,
-  onColorChanged,
+  onCustomizationChanged,
   onDeleted,
   onClose,
 }: Props) {
@@ -55,7 +56,8 @@ export function EditBottleModal({
         }}
         onCancel={onClose}
       />
-      <BottleColorPicker medication={medication} onChanged={onColorChanged} />
+      <BottleColorPicker medication={medication} onChanged={onCustomizationChanged} />
+      <PillCustomizationPanel medication={medication} pillsRemaining={pillsRemaining} onChanged={onCustomizationChanged} />
       <div className="mt-3 border-t border-apothecary-parchment-edge pt-2 text-center">
         <button
           onClick={() => void handleDelete()}
