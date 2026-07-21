@@ -15,4 +15,21 @@ export function withPillCustomization(
   return next;
 }
 
-export const PILL_EMOJI_PALETTE = ['💊', '⭐', '🌙', '☀️', '❤️', '🌿', '✨', '🔸'] as const;
+export const PILL_EMOJI_PALETTE = [
+  '💊',
+  '⭐',
+  '🌙',
+  '☀️',
+  '❤️',
+  '🌿',
+  '✨',
+  '🔸',
+  '🔵',
+  '🟣',
+  '🟢',
+  '🍀',
+  '🌸',
+  '💧',
+  '⚡',
+  '🎗️',
+] as const;
