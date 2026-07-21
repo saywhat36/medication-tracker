@@ -191,7 +191,7 @@ export function ShopView({
             setEditingId(null);
             onMedicationUpdated();
           }}
-          onColorChanged={onMedicationUpdated}
+          onCustomizationChanged={onMedicationUpdated}
           onDeleted={() => {
             setEditingId(null);
             setSelectedId(null);
