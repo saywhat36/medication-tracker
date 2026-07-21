@@ -17,16 +17,21 @@ export function PillDrawingCanvas({ value, disabled, onSave }: Props) {
   const drawingRef = useRef(false);
   const [hasStrokes, setHasStrokes] = useState(value != null);
 
+  // Load the existing drawing once, on mount only — not on every `value`
+  // update. This component is keyed by pill index (remounts when you
+  // switch pills), so mount-only is enough to show the right drawing per
+  // pill. Resyncing on every prop change instead would also fire right
+  // after our own onSave's round-trip echoes the value back, which could
+  // wipe an in-progress stroke if the user starts drawing again before
+  // that resolves.
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx) return;
-    ctx.clearRect(0, 0, SIZE, SIZE);
-    if (!value) return;
+    if (!canvas || !ctx || !value) return;
     const img = new Image();
     img.onload = () => ctx.drawImage(img, 0, 0, SIZE, SIZE);
     img.src = value;
-  }, [value]);
+  }, []);
 
   function pointFromEvent(e: PointerEvent<HTMLCanvasElement>): { x: number; y: number } {
     const rect = e.currentTarget.getBoundingClientRect();
