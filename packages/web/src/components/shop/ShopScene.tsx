@@ -1,7 +1,8 @@
 import type { SkyPhase } from '@/lib/skyPhase';
 import { apothecary } from '@/theme/apothecary';
 import { Bottle } from './Bottle';
-import { HangingFoliage } from './HangingFoliage';
+import { Creatures } from './Creatures';
+import { FOLIAGE_ZONE_FRACTIONS, HangingFoliage } from './HangingFoliage';
 import { SceneDecor } from './SceneDecor';
 import { WindowView } from './WindowView';
 import type { BottleData } from './bottleData';
@@ -125,6 +126,10 @@ export function ShopScene({ bottles, selectedId, onSelect, onEdit, compact, even
       )}
 
       <HangingFoliage width={width} baseline={layout.foliageBaseline} />
+      <Creatures
+        zoneXs={FOLIAGE_ZONE_FRACTIONS.map((f) => width * f)}
+        baseline={layout.foliageBaseline}
+      />
     </svg>
   );
 }

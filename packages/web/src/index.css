@@ -161,12 +161,127 @@
   animation: stamp-thunk 280ms ease-in forwards;
 }
 
+/* Easter-egg creatures that occasionally emerge from the hanging foliage.
+   Each runs once (no `infinite`) and the component removes the creature from
+   state on animationend, so there's nothing to clean up beyond that. */
+@keyframes creature-crawl {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(10px, 18px);
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+}
+
+.creature-ladybug {
+  animation: creature-crawl 8s ease-in-out;
+}
+
+@keyframes creature-flutter-up {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(8px, -30px);
+  }
+  100% {
+    transform: translate(-6px, -55px);
+    opacity: 0;
+  }
+}
+
+.creature-butterfly {
+  animation: creature-flutter-up 6s ease-in;
+}
+
+@keyframes creature-wing-flap {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(0.4);
+  }
+}
+
+.creature-butterfly-wings {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: creature-wing-flap 0.3s ease-in-out infinite;
+}
+
+@keyframes creature-descend {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  45%,
+  55% {
+    transform: translateY(22px);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+}
+
+.creature-spider {
+  animation: creature-descend 5s ease-in-out;
+}
+
+@keyframes creature-roll {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(40px, 0) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.creature-bottle {
+  animation: creature-roll 4s linear;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stamp-thunk,
   .candle:hover .candle-flame,
   .candle-flame,
   .candle-flame-core,
   .leaf-sway,
+  .creature-ladybug,
+  .creature-butterfly,
+  .creature-butterfly-wings,
+  .creature-spider,
+  .creature-bottle,
   .ink-draw {
     animation: none;
   }

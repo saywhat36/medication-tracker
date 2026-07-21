@@ -3,13 +3,17 @@ interface Props {
   baseline: number;
 }
 
+// The five clumps of the back foliage row, as fractions of scene width.
+// Exported so Creatures.tsx can spawn its easter eggs from the same spots.
+export const FOLIAGE_ZONE_FRACTIONS = [0.08, 0.3, 0.52, 0.74, 0.96] as const;
+
 // Leafy greenery hanging from the ceiling across the top of the scene. Built
 // in layers for depth — a dark back row, a lighter front row, a scalloped
 // leafy underside, and a few strands trailing down with flower or berry tips.
 // Deterministic from the width so it doesn't reshuffle between renders.
 export function HangingFoliage({ width, baseline }: Props) {
   // Back row: large, dark, sitting high.
-  const back = [0.08, 0.3, 0.52, 0.74, 0.96].map((f) => ({ cx: width * f }));
+  const back = FOLIAGE_ZONE_FRACTIONS.map((f) => ({ cx: width * f }));
   // Front row: medium, lighter, offset to break the silhouette.
   const front = [0.0, 0.19, 0.4, 0.62, 0.85, 1.0].map((f) => ({ cx: width * f }));
   // Scalloped leafy underside so the bottom edge isn't a straight line.
