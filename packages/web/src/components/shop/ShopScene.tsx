@@ -1,6 +1,7 @@
 import type { SkyPhase } from '@/lib/skyPhase';
 import { apothecary } from '@/theme/apothecary';
 import { Bottle } from './Bottle';
+import { Creatures } from './Creatures';
 import { HangingFoliage } from './HangingFoliage';
 import { SceneDecor } from './SceneDecor';
 import { WindowView } from './WindowView';
@@ -125,6 +126,7 @@ export function ShopScene({ bottles, selectedId, onSelect, onEdit, compact, even
       )}
 
       <HangingFoliage width={width} baseline={layout.foliageBaseline} />
+      <Creatures width={width} baseline={layout.foliageBaseline} />
     </svg>
   );
 }
