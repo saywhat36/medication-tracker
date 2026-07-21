@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { FOLIAGE_ZONE_FRACTIONS } from './HangingFoliage';
 
 interface Props {
-  zoneXs: number[]; // x-centres to spawn from — the same spots HangingFoliage's back row hangs from
+  width: number; // scene width, to place spawn spots at the same x-fractions HangingFoliage uses
   baseline: number; // the foliage's baseline y, so creatures emerge from where the leaves are
 }
 
@@ -23,11 +24,16 @@ let nextCreatureId = 0;
 // dropping on its thread, or a bottle rolling free for a second. Purely
 // decorative (pointer-events none, aria-hidden) and off entirely under
 // prefers-reduced-motion, matching the candle flicker and leaf sway.
-export function Creatures({ zoneXs, baseline }: Props) {
+export function Creatures({ width, baseline }: Props) {
   const [creatures, setCreatures] = useState<SpawnedCreature[]>([]);
   const [enabled] = useState(
     () => typeof window !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
   );
+  // Memoized on the primitive `width`, not recomputed into a fresh array
+  // reference on every render — this array is a useEffect dependency below,
+  // and a fresh reference each render would tear down and restart the spawn
+  // interval before it ever fires.
+  const zoneXs = useMemo(() => FOLIAGE_ZONE_FRACTIONS.map((f) => width * f), [width]);
 
   useEffect(() => {
     if (!enabled || zoneXs.length === 0) return;
